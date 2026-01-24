@@ -29,6 +29,9 @@ model Member {
   address      String?
   birthDate    DateTime?
   baptized     Boolean   @default(false)
+  address      String?
+  city         String?   // <--- AGREGA ESTA LÍNEA (Localidad)
+  birthDate    DateTime?
   
   // Relaciones
   ministries   MinistryMember[]
