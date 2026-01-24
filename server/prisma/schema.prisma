@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- MÓDULO: PERSONAS Y MIEMBROS ---
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER) // ADMIN, LEADER, USER
+  avatar    String?  // URL de MinIO
+  member    Member?
+  createdAt DateTime @default(now())
+}
+
+model Member {
+  id           Int       @id @default(autoincrement())
+  userId       Int?      @unique
+  user         User?     @relation(fields: [userId], references: [id])
+  firstName    String
+  lastName     String
+  phone        String?
+  address      String?
+  birthDate    DateTime?
+  baptized     Boolean   @default(false)
+  ministries   MinistryMember[]
+  attendance   Attendance[]
+  smallGroup   SmallGroup? @relation(fields: [smallGroupId], references: [id])
+  smallGroupId Int?
+}
+
+// --- MÓDULO: MINISTERIOS Y EQUIPOS ---
+model Ministry {
+  id          Int       @id @default(autoincrement())
+  name        String    // Ej: Alabanza, Niños
+  description String?
+  teams       Team[]
+  members     MinistryMember[]
+}
+
+model Team {
+  id          Int       @id @default(autoincrement())
+  name        String    // Ej: Voces, Guitarristas
+  ministryId  Int
+  ministry    Ministry  @relation(fields: [ministryId], references: [id])
+  assignments ServiceAssignment[]
+}
+
+model MinistryMember {
+  id         Int      @id @default(autoincrement())
+  memberId   Int
+  member     Member   @relation(fields: [memberId], references: [id])
+  ministryId Int
+  ministry   Ministry @relation(fields: [ministryId], references: [id])
+  role       String?  // Ej: Líder, Voluntario
+}
+
+// --- MÓDULO: PLANIFICACIÓN Y CULTOS ---
+model Service {
+  id          Int       @id @default(autoincrement())
+  date        DateTime
+  name        String    // Ej: Culto Domingo AM
+  type        String    // Ej: General, Jóvenes
+  plans       ServicePlanItem[]
+  assignments ServiceAssignment[]
+  attendance  Attendance[]
+}
+
+model ServicePlanItem {
+  id          Int      @id @default(autoincrement())
+  serviceId   Int
+  service     Service  @relation(fields: [serviceId], references: [id])
+  title       String   // Ej: "Cantar: Gracia Sublime"
+  type        String   // SONG, PREACHING, MEDIA, ANNOUNCEMENT
+  duration    Int?     // Minutos
+  order       Int      // Para ordenar los items (1, 2, 3...)
+  resourceId  String?  // ID o Link a archivo en MinIO (letra, partitura)
+}
+
+model ServiceAssignment {
+  id        Int      @id @default(autoincrement())
+  serviceId Int
+  service   Service  @relation(fields: [serviceId], references: [id])
+  teamId    Int
+  team      Team     @relation(fields: [teamId], references: [id])
+  memberId  Int
+  member    Member   @relation(fields: [memberId], references: [id])
+  status    String   @default("PENDING") // PENDING, ACCEPTED, DECLINED
+}
+
+// --- MÓDULO: OTROS ---
+model SmallGroup {
+  id        Int      @id @default(autoincrement())
+  name      String
+  leaderId  Int
+  members   Member[]
+}
+
+model Attendance {
+  id        Int      @id @default(autoincrement())
+  serviceId Int
+  service   Service  @relation(fields: [serviceId], references: [id])
+  memberId  Int?
+  member    Member?  @relation(fields: [memberId], references: [id])
+  count     Int?     // Para conteo general numérico
+  date      DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  LEADER
+  USER
+}
