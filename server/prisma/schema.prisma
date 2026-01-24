@@ -29,10 +29,15 @@ model Member {
   address      String?
   birthDate    DateTime?
   baptized     Boolean   @default(false)
+  
+  // Relaciones
   ministries   MinistryMember[]
   attendance   Attendance[]
   smallGroup   SmallGroup? @relation(fields: [smallGroupId], references: [id])
   smallGroupId Int?
+  
+  // ESTA ES LA LÍNEA QUE FALTABA Y CORRIGE EL ERROR:
+  assignments  ServiceAssignment[]
 }
 
 // --- MÓDULO: MINISTERIOS Y EQUIPOS ---
