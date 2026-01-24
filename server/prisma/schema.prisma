@@ -26,20 +26,19 @@ model Member {
   firstName    String
   lastName     String
   phone        String?
+  
+  // Datos de Dirección y Nacimiento
   address      String?
+  city         String?   // <--- Campo nuevo correctamente integrado
   birthDate    DateTime?
+  
   baptized     Boolean   @default(false)
-  address      String?
-  city         String?   // <--- AGREGA ESTA LÍNEA (Localidad)
-  birthDate    DateTime?
   
   // Relaciones
   ministries   MinistryMember[]
   attendance   Attendance[]
   smallGroup   SmallGroup? @relation(fields: [smallGroupId], references: [id])
   smallGroupId Int?
-  
-  // ESTA ES LA LÍNEA QUE FALTABA Y CORRIGE EL ERROR:
   assignments  ServiceAssignment[]
 }
 
