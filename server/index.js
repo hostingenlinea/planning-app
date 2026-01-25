@@ -6,6 +6,7 @@ const { PrismaClient } = require('@prisma/client');
 // --- IMPORTACIÓN DE RUTAS ---
 // Asegúrate de que el archivo 'server/routes/members.routes.js' exista
 const memberRoutes = require('./routes/members.routes');
+const serviceRoutes = require('./routes/services.routes');
 
 // Inicializar App y Base de Datos
 const app = express();
@@ -46,6 +47,7 @@ app.get('/', (req, res) => {
 // --- CONEXIÓN DE MÓDULOS (RUTAS) ---
 // Aquí iremos agregando los demás módulos (cultos, canciones, etc.)
 app.use('/api/members', memberRoutes);
+app.use('/api/services', serviceRoutes);
 
 // --- INICIO DEL SERVIDOR ---
 const PORT = process.env.PORT || 3000;
