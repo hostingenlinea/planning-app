@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import People from './pages/People';
 import Plans from './pages/Plans';
+import ServiceDetail from './pages/ServiceDetail';
 
 function App() {
   return (
@@ -18,7 +19,7 @@ function App() {
 
           {/* --- MÓDULOS PENDIENTES (Placeholders) --- */}
           {/* Estas rutas sirven para que los botones del menú no den error 404 */}
-          <Route path="/plans" element={<Plans />} />
+          <Route path="/plans/:id" element={<ServiceDetail />} />
           
           <Route path="/events" element={
             <div className="p-8 text-gray-500">

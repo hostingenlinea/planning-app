@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; // <--- 1. Importamos el hook de navegación
 import { Plus, Calendar, Clock, ChevronRight } from 'lucide-react';
 import CreateServiceModal from '../components/CreateServiceModal';
 
@@ -9,6 +10,8 @@ const Plans = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const navigate = useNavigate(); // <--- 2. Inicializamos el hook aquí
 
   useEffect(() => {
     fetchServices();
@@ -26,7 +29,7 @@ const Plans = () => {
     }
   };
 
-  // Función auxiliar para formatear fechas bonitas
+  // Función auxiliar para formatear fechas
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return {
@@ -77,6 +80,7 @@ const Plans = () => {
             return (
               <div 
                 key={service.id} 
+                onClick={() => navigate(`/plans/${service.id}`)} // <--- 3. AQUÍ ESTÁ EL CLICK
                 className={`bg-white rounded-xl shadow-sm border border-gray-100 p-0 overflow-hidden hover:shadow-md transition-shadow group cursor-pointer ${isPast ? 'opacity-60 grayscale' : ''}`}
               >
                 <div className="flex h-full">
