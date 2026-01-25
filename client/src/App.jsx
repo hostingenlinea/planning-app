@@ -1,26 +1,31 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+
+// --- IMPORTACIONES DE PÁGINAS ---
 import People from './pages/People';
-import Plans from './pages/Plans';
-import ServiceDetail from './pages/ServiceDetail';
+import Plans from './pages/Plans';         // <--- 1. Importamos el tablero principal
+import ServiceDetail from './pages/ServiceDetail'; // <--- 2. Importamos el detalle (si ya lo creaste)
 
 function App() {
   return (
     <BrowserRouter>
       <Layout>
         <Routes>
-          {/* --- RUTAS PRINCIPALES --- */}
-          
-          {/* Al entrar a la web, redirigir automáticamente a /people */}
+          {/* Redirección inicial */}
           <Route path="/" element={<Navigate to="/people" replace />} />
 
           {/* Módulo de Personas */}
           <Route path="/people" element={<People />} />
 
-          {/* --- MÓDULOS PENDIENTES (Placeholders) --- */}
-          {/* Estas rutas sirven para que los botones del menú no den error 404 */}
-          <Route path="/plans/:id" element={<ServiceDetail />} />
+          {/* --- MÓDULO DE PLANIFICACIÓN --- */}
+          {/* Esta es la ruta que te faltaba conectar: */}
+          <Route path="/plans" element={<Plans />} />
           
+          {/* Ruta dinámica para ver el detalle de un culto (ej: /plans/4) */}
+          {/* Si aún no creaste ServiceDetail.jsx, comenta esta línea temporalmente */}
+          <Route path="/plans/:id" element={<ServiceDetail />} />
+
+          {/* --- Placeholders (Módulos futuros) --- */}
           <Route path="/events" element={
             <div className="p-8 text-gray-500">
               <h2 className="text-2xl font-bold mb-2">Eventos</h2>
@@ -42,9 +47,9 @@ function App() {
             </div>
           } />
 
-          {/* Ruta para páginas no encontradas (404) */}
+          {/* Ruta de Error 404 */}
           <Route path="*" element={
-            <div className="p-8 text-red-500">
+            <div className="p-8 text-red-500 font-bold">
               Página no encontrada.
             </div>
           } />
