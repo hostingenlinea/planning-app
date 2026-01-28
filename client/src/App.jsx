@@ -6,6 +6,7 @@ import People from './pages/People';
 import Plans from './pages/Plans';         // <--- 1. Importamos el tablero principal
 import ServiceDetail from './pages/ServiceDetail'; // <--- 2. Importamos el detalle (si ya lo creaste)
 import Ministries from './pages/Ministries';
+import Organigram from './pages/Organigram';
 
 function App() {
   return (
@@ -28,6 +29,9 @@ function App() {
 
           {/* Módulo de Ministerios */}
           <Route path="/ministries" element={<Ministries />} />
+
+          {/* Módulo Organigrama */}
+          <Route path="/organigram" element={<Organigram />} />
 
           {/* --- Placeholders (Módulos futuros) --- */}
           <Route path="/events" element={

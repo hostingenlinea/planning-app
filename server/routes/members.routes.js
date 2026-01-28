@@ -75,4 +75,26 @@ router.post('/', async (req, res) => {
   }
 });
 
+// GET: Obtener UN miembro por ID con todos sus detalles
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const member = await prisma.member.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        teams: {
+          include: { team: true } // Para ver en qué equipos sirve
+        },
+        user: true // Para ver su email de acceso si tiene
+      }
+    });
+
+    if (!member) return res.status(404).json({ error: 'Miembro no encontrado' });
+    res.json(member);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener datos' });
+  }
+});
+
 module.exports = router;
