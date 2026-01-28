@@ -103,4 +103,53 @@ router.delete('/plan/:itemId', async (req, res) => {
   }
 });
 
+// --- NUEVO: Asignar una persona a un equipo para ESTE servicio ---
+router.post('/:id/assignments', async (req, res) => {
+  const { id } = req.params; // ID del Servicio
+  const { teamId, memberId } = req.body;
+
+  try {
+    // Evitar duplicados (que no asignen a la misma persona 2 veces al mismo rol hoy)
+    const exists = await prisma.serviceAssignment.findFirst({
+      where: {
+        serviceId: parseInt(id),
+        teamId: parseInt(teamId),
+        memberId: parseInt(memberId)
+      }
+    });
+
+    if (exists) {
+      return res.status(400).json({ error: 'Esta persona ya está asignada.' });
+    }
+
+    const assignment = await prisma.serviceAssignment.create({
+      data: {
+        serviceId: parseInt(id),
+        teamId: parseInt(teamId),
+        memberId: parseInt(memberId),
+        status: 'CONFIRMED' // Por ahora lo confirmamos directo
+      },
+      include: { member: true, team: true }
+    });
+    
+    res.json(assignment);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: 'Error al asignar persona' });
+  }
+});
+
+// --- NUEVO: Quitar una asignación ---
+router.delete('/assignments/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.serviceAssignment.delete({
+      where: { id: parseInt(id) }
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: 'Error al eliminar asignación' });
+  }
+});
+
 module.exports = router;
