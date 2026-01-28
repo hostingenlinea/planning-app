@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import People from './pages/People';
 import Plans from './pages/Plans';         // <--- 1. Importamos el tablero principal
 import ServiceDetail from './pages/ServiceDetail'; // <--- 2. Importamos el detalle (si ya lo creaste)
+import Ministries from './pages/Ministries';
 
 function App() {
   return (
@@ -24,6 +25,9 @@ function App() {
           {/* Ruta dinámica para ver el detalle de un culto (ej: /plans/4) */}
           {/* Si aún no creaste ServiceDetail.jsx, comenta esta línea temporalmente */}
           <Route path="/plans/:id" element={<ServiceDetail />} />
+
+          {/* Módulo de Ministerios */}
+          <Route path="/ministries" element={<Ministries />} />
 
           {/* --- Placeholders (Módulos futuros) --- */}
           <Route path="/events" element={

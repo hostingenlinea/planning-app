@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 // 1. Agregamos 'Church' a las importaciones
-import { Menu, X, Users, Church, Calendar, DollarSign, Settings } from 'lucide-react';
+import { Menu, X, Users, Church, Calendar, DollarSign, Settings, Layers } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -9,8 +9,9 @@ const Layout = ({ children }) => {
 
   const menuItems = [
     { name: 'Personas', icon: <Users size={20} />, path: '/people' },
-    // 2. Cambiamos el icono de Music a Church aquí:
     { name: 'Planificación', icon: <Church size={20} />, path: '/plans' },
+    // 2. Agregamos el nuevo ítem aquí:
+    { name: 'Ministerios', icon: <Layers size={20} />, path: '/ministries' },
     { name: 'Eventos', icon: <Calendar size={20} />, path: '/events' },
     { name: 'Donaciones', icon: <DollarSign size={20} />, path: '/giving' },
     { name: 'Admin', icon: <Settings size={20} />, path: '/admin' },
