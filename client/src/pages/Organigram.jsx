@@ -55,7 +55,7 @@ const Organigram = () => {
           <ul>
             <li>
               <div className="bg-blue-900 text-white p-4 rounded-lg shadow-lg border-2 border-blue-800 w-48 mx-auto hover:scale-105 transition-transform">
-                <div className="font-bold text-lg mb-1">MDSQ Global</div>
+                <div className="font-bold text-lg mb-1">MDS Quilmes</div>
                 <div className="text-xs text-blue-200">Iglesia Principal</div>
               </div>
 
