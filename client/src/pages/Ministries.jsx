@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Layers, Plus, Trash2, Users, UserPlus, Search, X } from 'lucide-react';
+import { Layers, Plus, Trash2, Users, Search, X, UserPlus } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 const Ministries = () => {
   const [ministries, setMinistries] = useState([]);
-  const [allMembers, setAllMembers] = useState([]); // Base completa de usuarios para buscar
+  const [allMembers, setAllMembers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [newMinistryName, setNewMinistryName] = useState('');
   
-  // Estado para controlar inputs y pestañas
-  const [activeTab, setActiveTab] = useState({}); // { [ministryId]: 'teams' | 'members' }
-  const [addingToMinistry, setAddingToMinistry] = useState(null); // ID del ministerio donde estamos agregando
+  // Formularios
+  const [newMinistryName, setNewMinistryName] = useState('');
+  const [newTeamNames, setNewTeamNames] = useState({}); // { [ministryId]: 'Nombre' }
+  
+  // Buscador para agregar gente
+  const [addingToTeam, setAddingToTeam] = useState(null); // ID del equipo al que agregamos
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
 
@@ -28,214 +30,169 @@ const Ministries = () => {
       ]);
       setMinistries(minRes.data);
       setAllMembers(memRes.data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { console.error(error); } 
+    finally { setLoading(false); }
   };
 
-  // Crear Ministerio
   const createMinistry = async (e) => {
     e.preventDefault();
     if (!newMinistryName.trim()) return;
-    try {
-      await axios.post(`${API_URL}/api/ministries`, { name: newMinistryName });
-      setNewMinistryName('');
-      fetchData();
-    } catch (error) { alert('Error al crear'); }
+    await axios.post(`${API_URL}/api/ministries`, { name: newMinistryName });
+    setNewMinistryName('');
+    fetchData();
   };
 
-  // Crear Equipo
-  const createTeam = async (ministryId, name) => {
-    try {
-      await axios.post(`${API_URL}/api/ministries/${ministryId}/teams`, { name });
-      fetchData();
-    } catch (error) { alert('Error al crear equipo'); }
+  const createTeam = async (ministryId) => {
+    const name = newTeamNames[ministryId];
+    if (!name?.trim()) return;
+    await axios.post(`${API_URL}/api/ministries/${ministryId}/teams`, { name });
+    setNewTeamNames({ ...newTeamNames, [ministryId]: '' });
+    fetchData();
   };
 
-  // Agregar Miembro al Ministerio
-  const addMemberToMinistry = async (ministryId, memberId) => {
+  const addMemberToTeam = async (teamId, memberId) => {
     try {
-      await axios.post(`${API_URL}/api/ministries/${ministryId}/members`, { memberId });
-      setAddingToMinistry(null); // Cerrar buscador
+      await axios.post(`${API_URL}/api/ministries/teams/${teamId}/members`, { memberId });
+      setAddingToTeam(null);
       setSearchTerm('');
       fetchData();
-    } catch (error) { 
-      alert(error.response?.data?.error || 'Error al agregar miembro'); 
-    }
+    } catch (error) { alert('Ya pertenece a este equipo'); }
   };
 
-  // Borrar
   const deleteItem = async (url) => {
-    if(!confirm('¿Estás seguro?')) return;
-    try { await axios.delete(url); fetchData(); } catch (error) { console.error(error); }
+    if(!confirm('¿Estás seguro de eliminar esto?')) return;
+    await axios.delete(url);
+    fetchData();
   };
 
-  // Manejo del Buscador
   const handleSearch = (term) => {
     setSearchTerm(term);
-    if (term.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    const filtered = allMembers.filter(m => 
+    if (term.length < 2) { setSearchResults([]); return; }
+    setSearchResults(allMembers.filter(m => 
       `${m.firstName} ${m.lastName}`.toLowerCase().includes(term.toLowerCase())
-    );
-    setSearchResults(filtered);
+    ));
   };
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-2">
-            Ministerios y Equipos
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">Gestiona tus equipos y quiénes pertenecen a ellos.</p>
+          <h1 className="text-3xl font-bold text-gray-800">Ministerios y Equipos</h1>
+          <p className="text-gray-500">Organiza quién sirve en cada área.</p>
         </div>
-        
         <form onSubmit={createMinistry} className="flex gap-2 w-full md:w-auto">
           <input 
-            type="text" placeholder="Nuevo Ministerio..." 
-            className="border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none flex-1 md:w-64"
-            value={newMinistryName} onChange={(e) => setNewMinistryName(e.target.value)}
+            className="border p-2 rounded-lg outline-none w-full md:w-64" 
+            placeholder="Nuevo Ministerio (Ej: Kids)" 
+            value={newMinistryName} onChange={e => setNewMinistryName(e.target.value)}
           />
-          <button type="submit" className="bg-blue-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800">Crear</button>
+          <button className="bg-blue-900 text-white px-4 rounded-lg font-bold">Crear</button>
         </form>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {ministries.map((ministry) => {
-          const tab = activeTab[ministry.id] || 'teams'; // Default tab: teams
+      {loading && <div className="text-center">Cargando...</div>}
 
-          return (
-            <div key={ministry.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[400px]">
-              {/* Header */}
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                  <Layers size={18} className="text-blue-600"/> {ministry.name}
-                </h3>
-                <button onClick={() => deleteItem(`${API_URL}/api/ministries/${ministry.id}`)} className="text-gray-300 hover:text-red-500">
-                  <Trash2 size={16} />
-                </button>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {ministries.map((ministry) => (
+          <div key={ministry.id} className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+            {/* Header del Ministerio */}
+            <div className="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                <Layers size={20} className="text-blue-600"/> {ministry.name}
+              </h3>
+              <button onClick={() => deleteItem(`${API_URL}/api/ministries/${ministry.id}`)} className="text-gray-400 hover:text-red-500">
+                <Trash2 size={18}/>
+              </button>
+            </div>
 
-              {/* Pestañas (Tabs) */}
-              <div className="flex border-b border-gray-100 text-sm">
-                <button 
-                  onClick={() => setActiveTab({...activeTab, [ministry.id]: 'teams'})}
-                  className={`flex-1 py-2 font-medium ${tab === 'teams' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}
-                >
-                  Equipos ({ministry.teams.length})
-                </button>
-                <button 
-                  onClick={() => setActiveTab({...activeTab, [ministry.id]: 'members'})}
-                  className={`flex-1 py-2 font-medium ${tab === 'members' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}
-                >
-                  Personas ({ministry.members.length})
-                </button>
-              </div>
-
-              {/* Contenido */}
-              <div className="flex-1 overflow-y-auto p-4 relative">
-                
-                {/* --- VISTA EQUIPOS --- */}
-                {tab === 'teams' && (
-                  <ul className="space-y-2">
-                    {ministry.teams.map(team => (
-                      <li key={team.id} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded group">
-                        <span className="text-gray-700 font-medium">{team.name}</span>
-                        <button onClick={() => deleteItem(`${API_URL}/api/ministries/teams/${team.id}`)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition">
-                          <X size={14}/>
+            {/* Lista de Equipos */}
+            <div className="p-4 bg-gray-50 min-h-[200px]">
+              <div className="space-y-4">
+                {ministry.teams.map(team => (
+                  <div key={team.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm relative">
+                    {/* Header del Equipo */}
+                    <div className="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
+                      <span className="font-bold text-gray-700 flex items-center gap-2">
+                        <Users size={16} className="text-green-600"/> {team.name}
+                      </span>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setAddingToTeam(team.id)}
+                          className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded font-medium hover:bg-blue-100 flex items-center gap-1"
+                        >
+                          <UserPlus size={14}/> Agregar Persona
                         </button>
-                      </li>
-                    ))}
-                    {ministry.teams.length === 0 && <p className="text-gray-400 text-xs italic text-center mt-4">No hay equipos definidos.</p>}
-                  </ul>
-                )}
-
-                {/* --- VISTA MIEMBROS --- */}
-                {tab === 'members' && (
-                  <ul className="space-y-2">
-                    {ministry.members.map(rel => (
-                      <li key={rel.id} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded group">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
-                            {rel.member.firstName[0]}{rel.member.lastName[0]}
-                          </div>
-                          <span className="text-gray-700">{rel.member.firstName} {rel.member.lastName}</span>
-                        </div>
-                        <button onClick={() => deleteItem(`${API_URL}/api/ministries/members/${rel.id}`)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition">
-                          <X size={14}/>
+                        <button onClick={() => deleteItem(`${API_URL}/api/ministries/teams/${team.id}`)} className="text-gray-300 hover:text-red-500">
+                          <X size={16}/>
                         </button>
-                      </li>
-                    ))}
-                    {ministry.members.length === 0 && <p className="text-gray-400 text-xs italic text-center mt-4">Nadie pertenece a este ministerio aún.</p>}
-                  </ul>
-                )}
-
-                {/* --- BUSCADOR FLOTANTE --- */}
-                {addingToMinistry === ministry.id && (
-                  <div className="absolute inset-0 bg-white z-10 p-4 flex flex-col">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Search size={16} className="text-gray-400"/>
-                      <input 
-                        autoFocus
-                        placeholder={tab === 'teams' ? "Nombre del equipo..." : "Buscar persona..."}
-                        className="flex-1 border-b border-gray-300 outline-none pb-1 text-sm"
-                        value={searchTerm}
-                        onChange={e => handleSearch(e.target.value)}
-                        onKeyDown={e => {
-                           if(e.key === 'Enter' && tab === 'teams') {
-                             createTeam(ministry.id, searchTerm);
-                             setAddingToMinistry(null);
-                             setSearchTerm('');
-                           }
-                        }}
-                      />
-                      <button onClick={() => setAddingToMinistry(null)} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
+                      </div>
                     </div>
 
-                    {/* Resultados de búsqueda (Solo para Personas) */}
-                    {tab === 'members' && (
-                      <div className="flex-1 overflow-y-auto border-t border-gray-100 mt-2 pt-2">
-                        {searchResults.map(m => (
-                          <button 
-                            key={m.id}
-                            onClick={() => addMemberToMinistry(ministry.id, m.id)}
-                            className="w-full text-left p-2 hover:bg-blue-50 rounded flex items-center gap-2 text-sm"
-                          >
-                            <span className="font-bold text-gray-700">{m.firstName} {m.lastName}</span>
-                          </button>
-                        ))}
-                        {searchTerm.length > 1 && searchResults.length === 0 && (
-                          <p className="text-xs text-gray-400 text-center mt-2">No encontrado.</p>
-                        )}
+                    {/* Miembros del Equipo (Tags) */}
+                    <div className="flex flex-wrap gap-2">
+                      {team.members.length === 0 ? (
+                        <span className="text-xs text-gray-400 italic">Sin miembros asignados.</span>
+                      ) : (
+                        team.members.map(tm => (
+                          <div key={tm.id} className="bg-blue-50 text-blue-800 text-xs px-2 py-1 rounded-full flex items-center gap-1 border border-blue-100">
+                            {tm.member.firstName} {tm.member.lastName}
+                            <button onClick={() => deleteItem(`${API_URL}/api/ministries/teams/members/${tm.id}`)} className="hover:text-red-600 ml-1">
+                              <X size={12}/>
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Buscador Flotante (Solo aparece en el equipo seleccionado) */}
+                    {addingToTeam === team.id && (
+                      <div className="absolute top-10 left-0 right-0 bg-white border border-blue-300 shadow-xl rounded-lg z-10 m-2 p-2 animate-fade-in">
+                        <div className="flex items-center gap-2 border-b pb-2 mb-2">
+                          <Search size={14} className="text-blue-500"/>
+                          <input 
+                            autoFocus
+                            className="flex-1 outline-none text-sm"
+                            placeholder={`Buscar persona para ${team.name}...`}
+                            value={searchTerm}
+                            onChange={e => handleSearch(e.target.value)}
+                          />
+                          <button onClick={() => {setAddingToTeam(null); setSearchTerm('');}}><X size={14}/></button>
+                        </div>
+                        <div className="max-h-32 overflow-y-auto">
+                          {searchResults.map(m => (
+                            <button 
+                              key={m.id}
+                              onClick={() => addMemberToTeam(team.id, m.id)}
+                              className="w-full text-left text-sm p-1.5 hover:bg-blue-50 rounded block"
+                            >
+                              {m.firstName} {m.lastName}
+                            </button>
+                          ))}
+                          {searchTerm.length > 1 && searchResults.length === 0 && <p className="text-xs text-center text-gray-400">No encontrado</p>}
+                        </div>
                       </div>
                     )}
-                    {tab === 'teams' && <p className="text-xs text-gray-400 mt-2">Presiona Enter para crear.</p>}
                   </div>
-                )}
+                ))}
               </div>
 
-              {/* Footer Acciones */}
-              <div className="p-3 bg-gray-50 border-t border-gray-100">
-                <button 
-                  onClick={() => {
-                    setAddingToMinistry(ministry.id);
-                    setSearchTerm('');
-                    setSearchResults([]);
-                  }}
-                  className="w-full text-center py-1.5 border border-dashed border-gray-300 rounded text-sm text-gray-500 hover:border-blue-500 hover:text-blue-600 font-medium flex items-center justify-center gap-2 transition"
-                >
-                  {tab === 'teams' ? <Plus size={16} /> : <UserPlus size={16} />}
-                  {tab === 'teams' ? 'Crear Equipo' : 'Agregar Persona'}
+              {/* Crear Nuevo Equipo */}
+              <div className="mt-4 flex gap-2">
+                <input 
+                  className="flex-1 border p-2 rounded text-sm outline-none"
+                  placeholder="Nuevo equipo (Ej: Maestros)"
+                  value={newTeamNames[ministry.id] || ''}
+                  onChange={e => setNewTeamNames({...newTeamNames, [ministry.id]: e.target.value})}
+                  onKeyDown={e => e.key === 'Enter' && createTeam(ministry.id)}
+                />
+                <button onClick={() => createTeam(ministry.id)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 rounded text-sm font-bold">
+                  + Equipo
                 </button>
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );

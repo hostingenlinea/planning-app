@@ -3,114 +3,112 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// GET: Obtener ministerios con Equipos Y Miembros
+// GET: Ministerios -> Equipos -> Miembros
 router.get('/', async (req, res) => {
   try {
     const ministries = await prisma.ministry.findMany({
       include: { 
-        teams: true,
-        members: {
-          include: { member: true } // Traer nombre y apellido del miembro
+        teams: {
+          include: {
+            members: {
+              include: { member: true } // Traemos los datos de la persona (Juan, Maria)
+            }
+          }
         }
       },
       orderBy: { name: 'asc' }
     });
     res.json(ministries);
   } catch (error) {
-    res.status(500).json({ error: 'Error al cargar ministerios' });
+    res.status(500).json({ error: 'Error al cargar datos' });
   }
 });
 
-// POST: Crear Ministerio (Igual que antes)
+// POST: Crear Ministerio
 router.post('/', async (req, res) => {
   const { name } = req.body;
-  if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   try {
     const newMinistry = await prisma.ministry.create({ data: { name } });
     res.json(newMinistry);
-  } catch (error) {
-    res.status(400).json({ error: 'Error al crear ministerio' });
-  }
+  } catch (error) { res.status(400).json({ error: 'Error al crear' }); }
 });
 
-// POST: Agregar Equipo (Igual que antes)
+// POST: Crear Equipo
 router.post('/:id/teams', async (req, res) => {
-  const { id } = req.params;
   const { name } = req.body;
   try {
     const newTeam = await prisma.team.create({
-      data: { name, ministryId: parseInt(id) }
+      data: { name, ministryId: parseInt(req.params.id) }
     });
     res.json(newTeam);
-  } catch (error) {
-    res.status(400).json({ error: 'Error al crear equipo' });
-  }
+  } catch (error) { res.status(400).json({ error: 'Error al crear equipo' }); }
 });
 
-// --- NUEVA RUTA: Agregar MIEMBRO al Ministerio ---
-router.post('/:id/members', async (req, res) => {
-  const { id } = req.params; // ID del Ministerio
-  const { memberId, role } = req.body; // ID de la Persona
+// --- NUEVO: Agregar Persona a un EQUIPO ESPECÍFICO ---
+router.post('/teams/:teamId/members', async (req, res) => {
+  const { teamId } = req.params;
+  const { memberId } = req.body;
 
   try {
-    // Verificar si ya existe para no duplicar
-    const exists = await prisma.ministryMember.findFirst({
-      where: { ministryId: parseInt(id), memberId: parseInt(memberId) }
-    });
-
-    if (exists) {
-      return res.status(400).json({ error: 'Esta persona ya está en el ministerio' });
-    }
-
-    const newAssignment = await prisma.ministryMember.create({
+    const newMember = await prisma.teamMember.create({
       data: {
-        ministryId: parseInt(id),
-        memberId: parseInt(memberId),
-        role: role || 'Voluntario'
+        teamId: parseInt(teamId),
+        memberId: parseInt(memberId)
       },
       include: { member: true }
     });
-    res.json(newAssignment);
+    res.json(newMember);
   } catch (error) {
-    console.error(error);
+    // Si ya existe (violación de unique constraint), devolvemos error amigable
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Esta persona ya está en el equipo.' });
+    }
     res.status(400).json({ error: 'Error al agregar miembro' });
   }
 });
 
-// DELETE: Quitar Miembro del Ministerio
-router.delete('/members/:id', async (req, res) => {
+// DELETE: Quitar Persona del Equipo
+router.delete('/teams/members/:id', async (req, res) => {
   try {
-    await prisma.ministryMember.delete({ where: { id: parseInt(req.params.id) } });
+    await prisma.teamMember.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
-  } catch (error) {
-    res.status(400).json({ error: 'No se pudo quitar al miembro' });
-  }
-});
-
-// DELETE: Borrar Ministerio (Con limpieza de dependencias)
-router.delete('/:id', async (req, res) => {
-  const id = parseInt(req.params.id);
-  try {
-    // Usar transacción para borrar todo lo relacionado primero
-    await prisma.$transaction([
-      prisma.team.deleteMany({ where: { ministryId: id } }),
-      prisma.ministryMember.deleteMany({ where: { ministryId: id } }),
-      prisma.ministry.delete({ where: { id: id } })
-    ]);
-    res.json({ success: true });
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ error: 'No se pudo eliminar el ministerio' });
-  }
+  } catch (error) { res.status(400).json({ error: 'Error al quitar miembro' }); }
 });
 
 // DELETE: Borrar Equipo
-router.delete('/teams/:teamId', async (req, res) => {
+router.delete('/teams/:id', async (req, res) => {
   try {
-    await prisma.team.delete({ where: { id: parseInt(req.params.teamId) } });
+    const id = parseInt(req.params.id);
+    await prisma.teamMember.deleteMany({ where: { teamId: id } }); // Limpiar miembros primero
+    await prisma.team.delete({ where: { id } });
     res.json({ success: true });
-  } catch (error) {
-    res.status(400).json({ error: 'No se pudo eliminar el equipo' });
+  } catch (error) { res.status(400).json({ error: 'Error al borrar equipo' }); }
+});
+
+// DELETE: Borrar Ministerio
+router.delete('/:id', async (req, res) => {
+  try {
+    // Esto es drástico: Borra ministerio, equipos y asignaciones de gente a esos equipos
+    // Como no configuramos Cascada en DB, lo hacemos manual:
+    const ministryId = parseInt(req.params.id);
+    
+    // 1. Buscar equipos del ministerio
+    const teams = await prisma.team.findMany({ where: { ministryId } });
+    const teamIds = teams.map(t => t.id);
+
+    // 2. Borrar miembros de esos equipos
+    if (teamIds.length > 0) {
+      await prisma.teamMember.deleteMany({ where: { teamId: { in: teamIds } } });
+      await prisma.team.deleteMany({ where: { ministryId } });
+    }
+    
+    // 3. Borrar ministerio
+    await prisma.ministry.delete({ where: { id: ministryId } });
+    
+    res.json({ success: true });
+  } catch (error) { 
+    console.error(error);
+    res.status(400).json({ error: 'Error al borrar ministerio' }); 
   }
 });
 

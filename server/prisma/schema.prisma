@@ -7,14 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- MÓDULO: PERSONAS Y MIEMBROS ---
+// --- MÓDULO: PERSONAS ---
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String
   name      String
-  role      Role     @default(USER) // ADMIN, LEADER, USER
-  avatar    String?  // URL de MinIO
+  role      Role     @default(USER)
+  avatar    String?
   member    Member?
   createdAt DateTime @default(now())
 }
@@ -26,16 +26,13 @@ model Member {
   firstName    String
   lastName     String
   phone        String?
-  
-  // Datos de Dirección y Nacimiento
   address      String?
-  city         String?   // <--- Campo nuevo correctamente integrado
+  city         String?
   birthDate    DateTime?
-  
   baptized     Boolean   @default(false)
   
-  // Relaciones
-  ministries   MinistryMember[]
+  // Relaciones corregidas:
+  teams        TeamMember[]        // <--- Una persona puede estar en muchos equipos
   attendance   Attendance[]
   smallGroup   SmallGroup? @relation(fields: [smallGroupId], references: [id])
   smallGroupId Int?
@@ -45,35 +42,39 @@ model Member {
 // --- MÓDULO: MINISTERIOS Y EQUIPOS ---
 model Ministry {
   id          Int       @id @default(autoincrement())
-  name        String    // Ej: Alabanza, Niños
+  name        String
   description String?
   teams       Team[]
-  members     MinistryMember[]
 }
 
 model Team {
   id          Int       @id @default(autoincrement())
-  name        String    // Ej: Voces, Guitarristas
+  name        String
   ministryId  Int
   ministry    Ministry  @relation(fields: [ministryId], references: [id])
+  members     TeamMember[]          // <--- Un equipo tiene muchos miembros
   assignments ServiceAssignment[]
 }
 
-model MinistryMember {
-  id         Int      @id @default(autoincrement())
-  memberId   Int
-  member     Member   @relation(fields: [memberId], references: [id])
-  ministryId Int
-  ministry   Ministry @relation(fields: [ministryId], references: [id])
-  role       String?  // Ej: Líder, Voluntario
+// --- NUEVA TABLA INTERMEDIA: VINCULA PERSONA CON EQUIPO ---
+model TeamMember {
+  id        Int    @id @default(autoincrement())
+  teamId    Int
+  team      Team   @relation(fields: [teamId], references: [id])
+  memberId  Int
+  member    Member @relation(fields: [memberId], references: [id])
+  role      String? // Ej: Líder, Titular, Suplente
+  
+  // Evitar duplicados: Una persona no puede estar 2 veces en el mismo equipo
+  @@unique([teamId, memberId]) 
 }
 
-// --- MÓDULO: PLANIFICACIÓN Y CULTOS ---
+// --- MÓDULO: PLANIFICACIÓN ---
 model Service {
   id          Int       @id @default(autoincrement())
   date        DateTime
-  name        String    // Ej: Culto Domingo AM
-  type        String    // Ej: General, Jóvenes
+  name        String
+  type        String
   plans       ServicePlanItem[]
   assignments ServiceAssignment[]
   attendance  Attendance[]
@@ -83,11 +84,11 @@ model ServicePlanItem {
   id          Int      @id @default(autoincrement())
   serviceId   Int
   service     Service  @relation(fields: [serviceId], references: [id])
-  title       String   // Ej: "Cantar: Gracia Sublime"
-  type        String   // SONG, PREACHING, MEDIA, ANNOUNCEMENT
-  duration    Int?     // Minutos
-  order       Int      // Para ordenar los items (1, 2, 3...)
-  resourceId  String?  // ID o Link a archivo en MinIO (letra, partitura)
+  title       String
+  type        String
+  duration    Int?
+  order       Int
+  resourceId  String?
 }
 
 model ServiceAssignment {
@@ -98,10 +99,9 @@ model ServiceAssignment {
   team      Team     @relation(fields: [teamId], references: [id])
   memberId  Int
   member    Member   @relation(fields: [memberId], references: [id])
-  status    String   @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  status    String   @default("PENDING")
 }
 
-// --- MÓDULO: OTROS ---
 model SmallGroup {
   id        Int      @id @default(autoincrement())
   name      String
@@ -115,7 +115,7 @@ model Attendance {
   service   Service  @relation(fields: [serviceId], references: [id])
   memberId  Int?
   member    Member?  @relation(fields: [memberId], references: [id])
-  count     Int?     // Para conteo general numérico
+  count     Int?
   date      DateTime @default(now())
 }
 
