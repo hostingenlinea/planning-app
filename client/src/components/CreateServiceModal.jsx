@@ -64,10 +64,10 @@ const CreateServiceModal = ({ isOpen, onClose, onServiceCreated }) => {
                 value={formData.type}
                 onChange={(e) => setFormData({...formData, type: e.target.value})}
               >
-                <option value="Culto General">Culto General</option>
-                <option value="Jóvenes">Reunión de Jóvenes</option>
+                <option value="Culto">Culto</option>
+                <option value="Noche ADN">Noche ADN</option>
+                <option value="Jovenes">Jóvenes</option>
                 <option value="Ensayo">Ensayo</option>
-                <option value="Evento Especial">Evento Especial</option>
               </select>
             </div>
           </div>
