@@ -3,7 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// GET: Ministerios -> Equipos -> Miembros
+// GET: Ministerios -> Equipos -> Miembros (Vital para la Planificación)
 router.get('/', async (req, res) => {
   try {
     const ministries = await prisma.ministry.findMany({
@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
         teams: {
           include: {
             members: {
-              include: { member: true } // Traemos los datos de la persona (Juan, Maria)
+              include: { member: true } // Traemos los nombres de las personas
             }
           }
         }
@@ -20,6 +20,7 @@ router.get('/', async (req, res) => {
     });
     res.json(ministries);
   } catch (error) {
+    console.error("Error cargando ministerios:", error);
     res.status(500).json({ error: 'Error al cargar datos' });
   }
 });
@@ -44,7 +45,7 @@ router.post('/:id/teams', async (req, res) => {
   } catch (error) { res.status(400).json({ error: 'Error al crear equipo' }); }
 });
 
-// --- NUEVO: Agregar Persona a un EQUIPO ESPECÍFICO ---
+// POST: Agregar Persona a un EQUIPO
 router.post('/teams/:teamId/members', async (req, res) => {
   const { teamId } = req.params;
   const { memberId } = req.body;
@@ -59,11 +60,8 @@ router.post('/teams/:teamId/members', async (req, res) => {
     });
     res.json(newMember);
   } catch (error) {
-    // Si ya existe (violación de unique constraint), devolvemos error amigable
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Esta persona ya está en el equipo.' });
-    }
-    res.status(400).json({ error: 'Error al agregar miembro' });
+    if (error.code === 'P2002') return res.status(400).json({ error: 'Ya existe en el equipo.' });
+    res.status(400).json({ error: 'Error al agregar' });
   }
 });
 
@@ -79,7 +77,7 @@ router.delete('/teams/members/:id', async (req, res) => {
 router.delete('/teams/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await prisma.teamMember.deleteMany({ where: { teamId: id } }); // Limpiar miembros primero
+    await prisma.teamMember.deleteMany({ where: { teamId: id } });
     await prisma.team.delete({ where: { id } });
     res.json({ success: true });
   } catch (error) { res.status(400).json({ error: 'Error al borrar equipo' }); }
@@ -88,28 +86,17 @@ router.delete('/teams/:id', async (req, res) => {
 // DELETE: Borrar Ministerio
 router.delete('/:id', async (req, res) => {
   try {
-    // Esto es drástico: Borra ministerio, equipos y asignaciones de gente a esos equipos
-    // Como no configuramos Cascada en DB, lo hacemos manual:
     const ministryId = parseInt(req.params.id);
-    
-    // 1. Buscar equipos del ministerio
     const teams = await prisma.team.findMany({ where: { ministryId } });
     const teamIds = teams.map(t => t.id);
 
-    // 2. Borrar miembros de esos equipos
     if (teamIds.length > 0) {
       await prisma.teamMember.deleteMany({ where: { teamId: { in: teamIds } } });
       await prisma.team.deleteMany({ where: { ministryId } });
     }
-    
-    // 3. Borrar ministerio
     await prisma.ministry.delete({ where: { id: ministryId } });
-    
     res.json({ success: true });
-  } catch (error) { 
-    console.error(error);
-    res.status(400).json({ error: 'Error al borrar ministerio' }); 
-  }
+  } catch (error) { res.status(400).json({ error: 'Error al borrar' }); }
 });
 
 module.exports = router;
