@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Settings, Tag, Save, Trash2, Shield, Search } from 'lucide-react';
+import { Settings, Tag, Save, Trash2, Shield, Search, Check, AlertCircle } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -16,7 +16,7 @@ const Admin = () => {
   // Buscador
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Roles definidos por el usuario
+  // Roles definidos
   const ROLES = ['Admin', 'Editor', 'Pastor', 'Pastora', 'Lider', 'Colaborador'];
   const COLORS = ['blue', 'green', 'red', 'yellow', 'purple', 'pink', 'gray'];
 
@@ -30,20 +30,22 @@ const Admin = () => {
         axios.get(`${API_URL}/api/admin/members`),
         axios.get(`${API_URL}/api/admin/labels`)
       ]);
-      setMembers(memRes.data);
+      // Agregamos una propiedad "_unsaved" falsa al inicio
+      const initialMembers = memRes.data.map(m => ({ ...m, _unsaved: false }));
+      setMembers(initialMembers);
       setLabels(labRes.data);
     } catch (error) { console.error(error); }
     finally { setLoading(false); }
   };
 
-  // --- LÓGICA ETIQUETAS ---
+  // --- ETIQUETAS ---
   const handleCreateLabel = async (e) => {
     e.preventDefault();
     if (!newLabel.trim()) return;
     try {
       await axios.post(`${API_URL}/api/admin/labels`, { name: newLabel, color: newColor });
       setNewLabel('');
-      fetchData();
+      fetchData(); // Recargamos para que aparezca en la lista
     } catch (error) { alert('Error o etiqueta duplicada'); }
   };
 
@@ -53,11 +55,11 @@ const Admin = () => {
     fetchData();
   };
 
-  // --- LÓGICA MIEMBROS ---
-  const handleUpdateMember = async (memberId, newRole, currentLabelIds, toggleLabelId = null) => {
+  // --- MIEMBROS: CAMBIO LOCAL (No guarda en BD todavía) ---
+  const handleLocalChange = (memberId, newRole, currentLabelIds, toggleLabelId = null) => {
     let newLabelIds = currentLabelIds.map(l => l.id);
 
-    // Si toggleLabelId existe, lo agregamos o quitamos del array
+    // Lógica para agregar/quitar etiqueta
     if (toggleLabelId) {
       if (newLabelIds.includes(toggleLabelId)) {
         newLabelIds = newLabelIds.filter(id => id !== toggleLabelId);
@@ -66,26 +68,40 @@ const Admin = () => {
       }
     }
 
-    // Actualización optimista (para que se sienta rápido)
+    // Actualizamos el estado LOCAL y marcamos como "no guardado"
     const updatedMembers = members.map(m => {
       if (m.id === memberId) {
-        // Simular el cambio localmente
-        const updatedLabels = labels.filter(l => newLabelIds.includes(l.id));
-        return { ...m, churchRole: newRole, labels: updatedLabels };
+        // Reconstruimos los objetos labels para que se vean bien visualmente
+        const updatedLabelsObject = labels.filter(l => newLabelIds.includes(l.id));
+        return { 
+          ...m, 
+          churchRole: newRole, 
+          labels: updatedLabelsObject,
+          _unsaved: true // <--- ESTO ACTIVA EL BOTÓN DE GUARDAR
+        };
       }
       return m;
     });
     setMembers(updatedMembers);
+  };
 
-    // Guardar en BD
+  // --- MIEMBROS: GUARDAR EN BD (Al hacer click en el botón) ---
+  const saveMemberChanges = async (member) => {
     try {
-      await axios.put(`${API_URL}/api/admin/members/${memberId}`, {
-        churchRole: newRole,
-        labelIds: newLabelIds
+      const labelIds = member.labels.map(l => l.id);
+      await axios.put(`${API_URL}/api/admin/members/${member.id}`, {
+        churchRole: member.churchRole,
+        labelIds: labelIds
       });
+      
+      // Si salió bien, quitamos la marca de "no guardado"
+      const cleanedMembers = members.map(m => 
+        m.id === member.id ? { ...m, _unsaved: false } : m
+      );
+      setMembers(cleanedMembers);
+
     } catch (error) {
-      alert('Error al guardar cambios');
-      fetchData(); // Revertir si falla
+      alert('Error al guardar cambios de ' + member.firstName);
     }
   };
 
@@ -104,7 +120,7 @@ const Admin = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* COLUMNA 1: GESTIÓN DE ETIQUETAS */}
+        {/* PANEL IZQUIERDO: ETIQUETAS */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
@@ -150,12 +166,11 @@ const Admin = () => {
                   </button>
                 </div>
               ))}
-              {labels.length === 0 && <p className="text-xs text-gray-400 italic">Sin etiquetas creadas.</p>}
             </div>
           </div>
         </div>
 
-        {/* COLUMNA 2 Y 3: LISTA MAESTRA DE PERSONAS */}
+        {/* PANEL DERECHO: LISTA DE PERSONAS */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-4 border-b bg-gray-50 flex justify-between items-center flex-wrap gap-2">
@@ -180,13 +195,15 @@ const Admin = () => {
                     <th className="px-4 py-3">Nombre</th>
                     <th className="px-4 py-3">Rol</th>
                     <th className="px-4 py-3">Etiquetas</th>
+                    <th className="px-4 py-3 text-center">Guardar</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {filteredMembers.map(member => (
-                    <tr key={member.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={member.id} className={`hover:bg-gray-50 transition-colors ${member._unsaved ? 'bg-orange-50' : ''}`}>
                       <td className="px-4 py-3 font-medium text-gray-900">
                         {member.firstName} {member.lastName}
+                        {member._unsaved && <span className="text-[10px] text-orange-500 block font-normal">Editado*</span>}
                       </td>
                       
                       {/* SELECTOR DE ROL */}
@@ -194,7 +211,7 @@ const Admin = () => {
                         <select 
                           className="border border-gray-300 rounded px-2 py-1 text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
                           value={member.churchRole || 'Colaborador'}
-                          onChange={(e) => handleUpdateMember(member.id, e.target.value, member.labels)}
+                          onChange={(e) => handleLocalChange(member.id, e.target.value, member.labels)}
                         >
                           {ROLES.map(role => (
                             <option key={role} value={role}>{role}</option>
@@ -202,7 +219,7 @@ const Admin = () => {
                         </select>
                       </td>
 
-                      {/* SELECTOR DE ETIQUETAS (Checkboxes visuales) */}
+                      {/* CHECKBOXES DE ETIQUETAS */}
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {labels.map(label => {
@@ -210,28 +227,41 @@ const Admin = () => {
                             return (
                               <button
                                 key={label.id}
-                                onClick={() => handleUpdateMember(member.id, member.churchRole, member.labels, label.id)}
+                                onClick={() => handleLocalChange(member.id, member.churchRole, member.labels, label.id)}
                                 className={`text-[10px] px-2 py-0.5 rounded-full border transition-all
                                   ${hasLabel 
                                     ? `bg-${label.color}-100 text-${label.color}-800 border-${label.color}-200 font-bold` 
-                                    : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400'
+                                    : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400 opacity-60'
                                   }`}
-                                style={hasLabel ? { backgroundColor: label.color, color: 'white', opacity: 0.9 } : {}}
+                                style={hasLabel ? { backgroundColor: label.color, color: 'white' } : {}}
                               >
                                 {label.name}
                               </button>
                             );
                           })}
-                          {labels.length === 0 && <span className="text-xs text-gray-300 italic">Crea etiquetas primero</span>}
                         </div>
+                      </td>
+
+                      {/* BOTÓN DE GUARDAR */}
+                      <td className="px-4 py-3 text-center">
+                        {member._unsaved ? (
+                          <button 
+                            onClick={() => saveMemberChanges(member)}
+                            className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 shadow-md animate-pulse"
+                            title="Guardar cambios"
+                          >
+                            <Save size={16} />
+                          </button>
+                        ) : (
+                          <span className="text-gray-300 flex justify-center">
+                            <Check size={16} />
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-            <div className="p-4 text-xs text-gray-400 text-center border-t">
-              Mostrando {filteredMembers.length} personas
             </div>
           </div>
         </div>
