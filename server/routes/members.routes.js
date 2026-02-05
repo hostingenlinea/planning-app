@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs'); // Necesario para encriptar la contraseña
+const bcrypt = require('bcryptjs'); 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
   try {
     const members = await prisma.member.findMany({
       orderBy: { lastName: 'asc' },
-      include: { user: true } // Incluimos datos del usuario (email) si se necesita
+      include: { user: true }
     });
     res.json(members);
   } catch (error) {
@@ -18,74 +18,15 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST: Crear un nuevo Usuario + Miembro
-router.post('/', async (req, res) => {
-  const { 
-    firstName, lastName, phone, address, city, 
-    birthDate, email, password 
-  } = req.body;
-
-  // Validaciones básicas
-  if (!email || !password || !firstName || !lastName) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios (Email, Contraseña, Nombre).' });
-  }
-
-  try {
-    // 1. Encriptar contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 2. Usamos una transacción para crear ambos registros o ninguno si falla
-    const result = await prisma.$transaction(async (prisma) => {
-      // A. Crear Usuario (Login)
-      const newUser = await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          name: `${firstName} ${lastName}`,
-          role: 'USER'
-        }
-      });
-
-      // B. Crear Miembro (Datos Perfil) asociado al usuario
-      const newMember = await prisma.member.create({
-        data: {
-          firstName,
-          lastName,
-          phone,
-          address,
-          city,
-          // Convertir string de fecha a objeto Date si viene dato
-          birthDate: birthDate ? new Date(birthDate) : null,
-          userId: newUser.id
-        }
-      });
-
-      return newMember;
-    });
-
-    res.json(result);
-
-  } catch (error) {
-    console.error(error);
-    // Manejo de error si el email ya existe (código P2002 de Prisma)
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'El correo electrónico ya está registrado.' });
-    }
-    res.status(400).json({ error: 'Error al crear el registro.' });
-  }
-});
-
-// GET: Obtener UN miembro por ID con todos sus detalles
+// GET: Obtener UN miembro por ID
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
     const member = await prisma.member.findUnique({
       where: { id: parseInt(id) },
       include: {
-        teams: {
-          include: { team: true } // Para ver en qué equipos sirve
-        },
-        user: true // Para ver su email de acceso si tiene
+        teams: { include: { team: true } },
+        user: true
       }
     });
 
@@ -94,6 +35,90 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener datos' });
+  }
+});
+
+// POST: Crear Miembro (Flexible: Con o Sin Usuario)
+router.post('/', async (req, res) => {
+  const { 
+    firstName, lastName, phone, address, city, 
+    birthDate, email, password 
+  } = req.body;
+
+  // Validación Mínima: Nombre y Apellido siempre requeridos
+  if (!firstName || !lastName) {
+    return res.status(400).json({ error: 'Nombre y Apellido son obligatorios.' });
+  }
+
+  try {
+    // CASO 1: Viene con Email y Password -> Crear Usuario + Miembro (Tu lógica avanzada)
+    if (email && password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const result = await prisma.$transaction(async (prisma) => {
+        // A. Crear Usuario
+        const newUser = await prisma.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+            name: `${firstName} ${lastName}`,
+            role: 'USER'
+          }
+        });
+
+        // B. Crear Miembro asociado
+        const newMember = await prisma.member.create({
+          data: {
+            firstName, lastName, phone, address, city,
+            birthDate: birthDate ? new Date(birthDate) : null,
+            userId: newUser.id
+          }
+        });
+        return newMember;
+      });
+
+      return res.json(result);
+    }
+
+    // CASO 2: Solo datos básicos -> Crear SOLO Miembro (Lógica para el Directorio rápido)
+    const simpleMember = await prisma.member.create({
+      data: {
+        firstName, lastName, phone, address, city,
+        birthDate: birthDate ? new Date(birthDate) : null,
+        // userId se queda nulo porque no tiene login todavía
+      }
+    });
+
+    res.json(simpleMember);
+
+  } catch (error) {
+    console.error(error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'El correo electrónico ya existe.' });
+    }
+    res.status(400).json({ error: 'Error al crear el registro.' });
+  }
+});
+
+// DELETE: Borrar Miembro (Esto faltaba en tu código)
+router.delete('/:id', async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    // 1. Borrar referencias (Equipos, Asignaciones)
+    // Usamos deleteMany por seguridad, si no hay nada no falla
+    await prisma.teamMember.deleteMany({ where: { memberId: id } });
+    await prisma.serviceAssignment.deleteMany({ where: { memberId: id } });
+    
+    // 2. Borrar el Miembro
+    await prisma.member.delete({ where: { id } });
+    
+    // Opcional: Si tenía usuario asociado, podrías borrarlo aquí también,
+    // pero por seguridad a veces es mejor dejar el usuario o borrarlo manual.
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: 'No se pudo eliminar el miembro' });
   }
 });
 
