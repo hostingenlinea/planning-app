@@ -11,7 +11,7 @@ const Layout = ({ children }) => {
     { name: 'Personas', icon: <Users size={20} />, path: '/people' },
     { name: 'Planificación', icon: <Church size={20} />, path: '/plans' },
     // 2. Agregamos el nuevo ítem aquí:
-    { name: 'Ministerios', icon: <Layers size={20} />, path: '/ministries' },
+    { name: 'Áreas', icon: <Layers size={20} />, path: '/areas' },
     { name: 'Eventos', icon: <Calendar size={20} />, path: '/events' },
     { name: 'Organigrama', icon: <Network size={20} />, path: '/organigram' },
     { name: 'Donaciones', icon: <DollarSign size={20} />, path: '/giving' },

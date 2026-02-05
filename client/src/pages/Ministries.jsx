@@ -5,16 +5,14 @@ import { Layers, Plus, Trash2, Users, Search, X, UserPlus } from 'lucide-react';
 const API_URL = import.meta.env.VITE_API_URL;
 
 const Ministries = () => {
-  const [ministries, setMinistries] = useState([]);
+  const [areas, setAreas] = useState([]); // Antes ministries
   const [allMembers, setAllMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Formularios
-  const [newMinistryName, setNewMinistryName] = useState('');
-  const [newTeamNames, setNewTeamNames] = useState({}); // { [ministryId]: 'Nombre' }
+  const [newAreaName, setNewAreaName] = useState('');
+  const [newTeamNames, setNewTeamNames] = useState({});
   
-  // Buscador para agregar gente
-  const [addingToTeam, setAddingToTeam] = useState(null); // ID del equipo al que agregamos
+  const [addingToTeam, setAddingToTeam] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
 
@@ -24,29 +22,29 @@ const Ministries = () => {
 
   const fetchData = async () => {
     try {
-      const [minRes, memRes] = await Promise.all([
-        axios.get(`${API_URL}/api/ministries`),
+      const [areaRes, memRes] = await Promise.all([
+        axios.get(`${API_URL}/api/ministries`), // La API sigue llamándose ministries internamente
         axios.get(`${API_URL}/api/members`)
       ]);
-      setMinistries(minRes.data);
+      setAreas(areaRes.data);
       setAllMembers(memRes.data);
     } catch (error) { console.error(error); } 
     finally { setLoading(false); }
   };
 
-  const createMinistry = async (e) => {
+  const createArea = async (e) => {
     e.preventDefault();
-    if (!newMinistryName.trim()) return;
-    await axios.post(`${API_URL}/api/ministries`, { name: newMinistryName });
-    setNewMinistryName('');
+    if (!newAreaName.trim()) return;
+    await axios.post(`${API_URL}/api/ministries`, { name: newAreaName });
+    setNewAreaName('');
     fetchData();
   };
 
-  const createTeam = async (ministryId) => {
-    const name = newTeamNames[ministryId];
+  const createTeam = async (areaId) => {
+    const name = newTeamNames[areaId];
     if (!name?.trim()) return;
-    await axios.post(`${API_URL}/api/ministries/${ministryId}/teams`, { name });
-    setNewTeamNames({ ...newTeamNames, [ministryId]: '' });
+    await axios.post(`${API_URL}/api/ministries/${areaId}/teams`, { name });
+    setNewTeamNames({ ...newTeamNames, [areaId]: '' });
     fetchData();
   };
 
@@ -78,30 +76,30 @@ const Ministries = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Ministerios y Equipos</h1>
-          <p className="text-gray-500">Organiza quién sirve en cada área.</p>
+          <h1 className="text-3xl font-bold text-gray-800">Áreas y Equipos</h1>
+          <p className="text-gray-500">Estructura las áreas de la iglesia (Ej: Stage, Mujeres).</p>
         </div>
-        <form onSubmit={createMinistry} className="flex gap-2 w-full md:w-auto">
+        <form onSubmit={createArea} className="flex gap-2 w-full md:w-auto">
           <input 
             className="border p-2 rounded-lg outline-none w-full md:w-64" 
-            placeholder="Nuevo Ministerio (Ej: Kids)" 
-            value={newMinistryName} onChange={e => setNewMinistryName(e.target.value)}
+            placeholder="Nueva Área (Ej: Stage)" 
+            value={newAreaName} onChange={e => setNewAreaName(e.target.value)}
           />
-          <button className="bg-blue-900 text-white px-4 rounded-lg font-bold">Crear</button>
+          <button className="bg-blue-900 text-white px-4 rounded-lg font-bold">Crear Área</button>
         </form>
       </div>
 
       {loading && <div className="text-center">Cargando...</div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {ministries.map((ministry) => (
-          <div key={ministry.id} className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-            {/* Header del Ministerio */}
+        {areas.map((area) => (
+          <div key={area.id} className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+            {/* Header del Área */}
             <div className="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
               <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                <Layers size={20} className="text-blue-600"/> {ministry.name}
+                <Layers size={20} className="text-blue-600"/> {area.name}
               </h3>
-              <button onClick={() => deleteItem(`${API_URL}/api/ministries/${ministry.id}`)} className="text-gray-400 hover:text-red-500">
+              <button onClick={() => deleteItem(`${API_URL}/api/ministries/${area.id}`)} className="text-gray-400 hover:text-red-500">
                 <Trash2 size={18}/>
               </button>
             </div>
@@ -109,7 +107,7 @@ const Ministries = () => {
             {/* Lista de Equipos */}
             <div className="p-4 bg-gray-50 min-h-[200px]">
               <div className="space-y-4">
-                {ministry.teams.map(team => (
+                {area.teams.map(team => (
                   <div key={team.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm relative">
                     {/* Header del Equipo */}
                     <div className="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
@@ -129,7 +127,7 @@ const Ministries = () => {
                       </div>
                     </div>
 
-                    {/* Miembros del Equipo (Tags) */}
+                    {/* Miembros del Equipo */}
                     <div className="flex flex-wrap gap-2">
                       {team.members.length === 0 ? (
                         <span className="text-xs text-gray-400 italic">Sin miembros asignados.</span>
@@ -145,7 +143,7 @@ const Ministries = () => {
                       )}
                     </div>
 
-                    {/* Buscador Flotante (Solo aparece en el equipo seleccionado) */}
+                    {/* Buscador Flotante */}
                     {addingToTeam === team.id && (
                       <div className="absolute top-10 left-0 right-0 bg-white border border-blue-300 shadow-xl rounded-lg z-10 m-2 p-2 animate-fade-in">
                         <div className="flex items-center gap-2 border-b pb-2 mb-2">
@@ -181,12 +179,12 @@ const Ministries = () => {
               <div className="mt-4 flex gap-2">
                 <input 
                   className="flex-1 border p-2 rounded text-sm outline-none"
-                  placeholder="Nuevo equipo (Ej: Maestros)"
-                  value={newTeamNames[ministry.id] || ''}
-                  onChange={e => setNewTeamNames({...newTeamNames, [ministry.id]: e.target.value})}
-                  onKeyDown={e => e.key === 'Enter' && createTeam(ministry.id)}
+                  placeholder="Nuevo equipo (Ej: General, Voces)"
+                  value={newTeamNames[area.id] || ''}
+                  onChange={e => setNewTeamNames({...newTeamNames, [area.id]: e.target.value})}
+                  onKeyDown={e => e.key === 'Enter' && createTeam(area.id)}
                 />
-                <button onClick={() => createTeam(ministry.id)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 rounded text-sm font-bold">
+                <button onClick={() => createTeam(area.id)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 rounded text-sm font-bold">
                   + Equipo
                 </button>
               </div>
