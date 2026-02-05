@@ -27,8 +27,8 @@ function App() {
           {/* Si aún no creaste ServiceDetail.jsx, comenta esta línea temporalmente */}
           <Route path="/plans/:id" element={<ServiceDetail />} />
 
-          {/* Módulo de Ministerios */}
-          <Route path="/ministries" element={<Ministries />} />
+          {/* Módulo de Areas */}
+          <Route path="/areas" element={<Ministries />} />
 
           {/* Módulo Organigrama */}
           <Route path="/organigram" element={<Organigram />} />
