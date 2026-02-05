@@ -30,6 +30,8 @@ model Member {
   city         String?
   birthDate    DateTime?
   baptized     Boolean   @default(false)
+  churchRole String  @default("Colaborador")
+  labels     Label[]
   
   // Relaciones corregidas:
   teams        TeamMember[]        // <--- Una persona puede estar en muchos equipos
@@ -117,6 +119,13 @@ model Attendance {
   member    Member?  @relation(fields: [memberId], references: [id])
   count     Int?
   date      DateTime @default(now())
+}
+
+model Label {
+  id      Int      @id @default(autoincrement())
+  name    String   @unique // Ej: "Bautizado"
+  color   String?  @default("blue") // Para que se vea bonito
+  members Member[] 
 }
 
 enum Role {

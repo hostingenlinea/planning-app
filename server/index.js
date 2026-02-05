@@ -6,7 +6,8 @@ const { PrismaClient } = require('@prisma/client');
 // --- IMPORTACIÓN DE RUTAS ---
 const memberRoutes = require('./routes/members.routes');
 const serviceRoutes = require('./routes/services.routes');
-const ministryRoutes = require('./routes/ministries.routes'); // <--- Asegúrate que esta línea esté
+const ministryRoutes = require('./routes/ministries.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 // Inicializar
 const app = express();
@@ -41,7 +42,8 @@ app.get('/', (req, res) => {
 // --- CONEXIÓN DE MÓDULOS ---
 app.use('/api/members', memberRoutes);
 app.use('/api/services', serviceRoutes);
-app.use('/api/ministries', ministryRoutes); // <--- Y esta línea también es vital
+app.use('/api/ministries', ministryRoutes);
+app.use('/api/admin', adminRoutes);
 
 // --- INICIO ---
 const PORT = process.env.PORT || 3000;
