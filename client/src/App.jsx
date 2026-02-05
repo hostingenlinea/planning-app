@@ -8,6 +8,7 @@ import ServiceDetail from './pages/ServiceDetail'; // <--- 2. Importamos el deta
 import Ministries from './pages/Ministries';
 import Organigram from './pages/Organigram';
 import Events from './pages/Events';
+import Admin from './pages/Admin';
 
 function App() {
   return (
@@ -44,12 +45,8 @@ function App() {
             </div>
           } />
 
-          <Route path="/admin" element={
-            <div className="p-8 text-gray-500">
-              <h2 className="text-2xl font-bold mb-2">Administración</h2>
-              <p>Configuraciones generales del sistema.</p>
-            </div>
-          } />
+          {/* Módulo Administrador */}
+          <Route path="/admin" element={<Admin />} />
 
           {/* Ruta de Error 404 */}
           <Route path="*" element={
