@@ -7,6 +7,7 @@ import Plans from './pages/Plans';         // <--- 1. Importamos el tablero prin
 import ServiceDetail from './pages/ServiceDetail'; // <--- 2. Importamos el detalle (si ya lo creaste)
 import Ministries from './pages/Ministries';
 import Organigram from './pages/Organigram';
+import Events from './pages/Events';
 
 function App() {
   return (
@@ -33,13 +34,8 @@ function App() {
           {/* Módulo Organigrama */}
           <Route path="/organigram" element={<Organigram />} />
 
-          {/* --- Placeholders (Módulos futuros) --- */}
-          <Route path="/events" element={
-            <div className="p-8 text-gray-500">
-              <h2 className="text-2xl font-bold mb-2">Eventos</h2>
-              <p>Este módulo está en construcción.</p>
-            </div>
-          } />
+          {/* Módulo Eventos */}
+          <Route path="/events" element={<Events />} />
 
           <Route path="/giving" element={
             <div className="p-8 text-gray-500">
