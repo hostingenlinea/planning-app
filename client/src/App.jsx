@@ -3,12 +3,14 @@ import Layout from './components/Layout';
 
 // --- IMPORTACIONES DE PÁGINAS ---
 import People from './pages/People';
-import Plans from './pages/Plans';         // <--- 1. Importamos el tablero principal
-import ServiceDetail from './pages/ServiceDetail'; // <--- 2. Importamos el detalle (si ya lo creaste)
+import Plans from './pages/Plans';
+import ServiceDetail from './pages/ServiceDetail';
 import Ministries from './pages/Ministries';
 import Organigram from './pages/Organigram';
 import Events from './pages/Events';
 import Admin from './pages/Admin';
+import MyCredential from './pages/MyCredential';
+import Reception from './pages/Reception';
 
 function App() {
   return (
@@ -47,6 +49,12 @@ function App() {
 
           {/* Módulo Administrador */}
           <Route path="/admin" element={<Admin />} />
+
+          {/* Vista Colaborador */}
+          <Route path="/credential" element={<MyCredential />} />
+
+          {/* Vista Recepción */}
+          <Route path="/reception" element={<Reception />} />
 
           {/* Ruta de Error 404 */}
           <Route path="*" element={

@@ -113,7 +113,7 @@ model SmallGroup {
 
 model Attendance {
   id        Int      @id @default(autoincrement())
-  serviceId Int
+  serviceId Int?
   service   Service  @relation(fields: [serviceId], references: [id])
   memberId  Int?
   member    Member?  @relation(fields: [memberId], references: [id])

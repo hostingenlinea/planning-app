@@ -8,6 +8,7 @@ const memberRoutes = require('./routes/members.routes');
 const serviceRoutes = require('./routes/services.routes');
 const ministryRoutes = require('./routes/ministries.routes');
 const adminRoutes = require('./routes/admin.routes');
+const attendanceRoutes = require('./routes/attendance.routes');
 
 // Inicializar
 const app = express();
@@ -44,6 +45,8 @@ app.use('/api/members', memberRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/ministries', ministryRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/attendance', attendanceRoutes);
+
 
 // --- INICIO ---
 const PORT = process.env.PORT || 3000;
