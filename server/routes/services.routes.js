@@ -3,152 +3,109 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// GET: Obtener próximos servicios (y recientes)
+// 1. OBTENER TODOS LOS PLANES
 router.get('/', async (req, res) => {
   try {
     const services = await prisma.service.findMany({
-      orderBy: { date: 'desc' }, // Ordenar por fecha (el más nuevo arriba)
-      take: 50 // Limitamos a 50 para empezar
+      orderBy: { date: 'desc' },
+      include: { items: true }
     });
     res.json(services);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al cargar los servicios' });
+    res.status(500).json({ error: 'Error al obtener planes' });
   }
 });
 
-// POST: Crear un nuevo servicio
-router.post('/', async (req, res) => {
-  const { name, date, type } = req.body;
-
-  if (!name || !date) {
-    return res.status(400).json({ error: 'Nombre y fecha son obligatorios' });
+// 2. OBTENER UN PLAN DETALLADO
+router.get('/:id', async (req, res) => {
+  try {
+    const service = await prisma.service.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { items: { orderBy: { order: 'asc' } } }
+    });
+    if (!service) return res.status(404).json({ error: 'Plan no encontrado' });
+    res.json(service);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener el detalle' });
   }
+});
 
+// 3. CREAR NUEVO PLAN
+router.post('/', async (req, res) => {
+  const { name, date, leader } = req.body;
   try {
     const newService = await prisma.service.create({
       data: {
         name,
-        type: type || 'General',
-        // Convertimos el string que envía el frontend a objeto Date real
-        date: new Date(date) 
+        date: new Date(date),
+        leader
       }
     });
     res.json(newService);
   } catch (error) {
-    console.error(error);
-    res.status(400).json({ error: 'No se pudo crear el servicio' });
+    res.status(500).json({ error: 'Error al crear el plan' });
   }
 });
 
-// GET: Obtener un servicio por ID con su cronograma
-router.get('/:id', async (req, res) => {
-  const { id } = req.params;
+// 4. ACTUALIZAR PLAN E ÍTEMS (SOLUCIÓN AL ERROR DE GUARDADO)
+router.put('/:id', async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { name, date, leader, items } = req.body;
+
   try {
-    const service = await prisma.service.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        plans: {
-          orderBy: { order: 'asc' } // Ordenar ítems por orden de secuencia (1, 2, 3...)
-        },
-        assignments: {
-          include: {
-            member: true,
-            team: true
-          }
+    // Usamos una transacción para asegurar que todo se guarde bien o nada
+    await prisma.$transaction(async (tx) => {
+      
+      // A. Actualizar datos del servicio
+      await tx.service.update({
+        where: { id },
+        data: { 
+          name, 
+          date: new Date(date), 
+          leader 
         }
+      });
+
+      // B. REEMPLAZO TOTAL DE ÍTEMS
+      // 1. Borramos todos los ítems viejos de este servicio
+      // (Usamos la relación 'items' que definiste en tu schema.prisma)
+      await tx.serviceItem.deleteMany({
+        where: { serviceId: id }
+      });
+
+      // 2. Creamos los nuevos (así evitamos conflictos de IDs temporales)
+      if (items && items.length > 0) {
+        await tx.serviceItem.createMany({
+          data: items.map((item, index) => ({
+            serviceId: id,
+            type: item.type,
+            title: item.title,
+            description: item.description || '',
+            duration: item.duration || '5:00',
+            order: index // Guardamos el orden visual
+          }))
+        });
       }
     });
-    
-    if (!service) return res.status(404).json({ error: 'Servicio no encontrado' });
-    res.json(service);
+
+    res.json({ success: true });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al obtener el servicio' });
+    console.error("Error al guardar plan:", error);
+    res.status(500).json({ error: 'Error interno al guardar los cambios.' });
   }
 });
 
-// POST: Agregar un ítem al cronograma (Plan)
-router.post('/:id/plan', async (req, res) => {
-  const { id } = req.params;
-  const { title, type, duration, order } = req.body;
-
+// 5. ELIMINAR PLAN
+router.delete('/:id', async (req, res) => {
   try {
-    const newItem = await prisma.servicePlanItem.create({
-      data: {
-        serviceId: parseInt(id),
-        title,
-        type,      // SONG, PREACHING, ANNOUNCEMENT, MEDIA
-        duration: parseInt(duration) || 0,
-        order: parseInt(order) || 1
-      }
-    });
-    res.json(newItem);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ error: 'Error al agregar ítem' });
-  }
-});
-
-// DELETE: Borrar un ítem del cronograma
-router.delete('/plan/:itemId', async (req, res) => {
-  const { itemId } = req.params;
-  try {
-    await prisma.servicePlanItem.delete({
-      where: { id: parseInt(itemId) }
-    });
+    const id = parseInt(req.params.id);
+    // Borrar ítems primero (por si la cascada no está configurada)
+    await prisma.serviceItem.deleteMany({ where: { serviceId: id } });
+    await prisma.service.delete({ where: { id } });
     res.json({ success: true });
   } catch (error) {
-    res.status(400).json({ error: 'Error al eliminar ítem' });
-  }
-});
-
-// --- NUEVO: Asignar una persona a un equipo para ESTE servicio ---
-router.post('/:id/assignments', async (req, res) => {
-  const { id } = req.params; // ID del Servicio
-  const { teamId, memberId } = req.body;
-
-  try {
-    // Evitar duplicados (que no asignen a la misma persona 2 veces al mismo rol hoy)
-    const exists = await prisma.serviceAssignment.findFirst({
-      where: {
-        serviceId: parseInt(id),
-        teamId: parseInt(teamId),
-        memberId: parseInt(memberId)
-      }
-    });
-
-    if (exists) {
-      return res.status(400).json({ error: 'Esta persona ya está asignada.' });
-    }
-
-    const assignment = await prisma.serviceAssignment.create({
-      data: {
-        serviceId: parseInt(id),
-        teamId: parseInt(teamId),
-        memberId: parseInt(memberId),
-        status: 'CONFIRMED' // Por ahora lo confirmamos directo
-      },
-      include: { member: true, team: true }
-    });
-    
-    res.json(assignment);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ error: 'Error al asignar persona' });
-  }
-});
-
-// --- NUEVO: Quitar una asignación ---
-router.delete('/assignments/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    await prisma.serviceAssignment.delete({
-      where: { id: parseInt(id) }
-    });
-    res.json({ success: true });
-  } catch (error) {
-    res.status(400).json({ error: 'Error al eliminar asignación' });
+    res.status(500).json({ error: 'Error al eliminar' });
   }
 });
 
