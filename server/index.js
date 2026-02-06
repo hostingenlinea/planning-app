@@ -8,7 +8,8 @@ const memberRoutes = require('./routes/members.routes');
 const serviceRoutes = require('./routes/services.routes');
 const ministryRoutes = require('./routes/ministries.routes');
 const adminRoutes = require('./routes/admin.routes');
-const attendanceRoutes = require('./routes/attendance.routes'); // <--- AGREGADO AQUÍ
+const attendanceRoutes = require('./routes/attendance.routes');
+const authRoutes = require('./routes/auth.routes'); // <--- 1. AGREGADO AQUÍ
 
 // Inicializar
 const app = express();
@@ -33,7 +34,7 @@ app.use(cors({
   credentials: true
 }));
 
-// --- CONFIGURACIÓN BODY PARSER (AUMENTADO A 10MB PARA FOTOS) ---
+// --- CONFIGURACIÓN BODY PARSER (10MB PARA FOTOS) ---
 app.use(express.json({ limit: '10mb' })); 
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -47,7 +48,8 @@ app.use('/api/members', memberRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/ministries', ministryRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/attendance', attendanceRoutes); // <--- CONECTADO AQUÍ
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/auth', authRoutes); // <--- 2. CONECTADO AQUÍ
 
 // --- INICIO ---
 const PORT = process.env.PORT || 3000;
