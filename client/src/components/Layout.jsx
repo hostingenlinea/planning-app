@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // <--- IMPORTANTE
+import { useAuth } from '../context/AuthContext';
 import { 
   Users, Church, Calendar, Settings, Network, Layers, 
-  Menu, X, Scan, QrCode, LogOut, Gift 
+  Menu, X, Scan, QrCode, LogOut, Gift, UserCog // <--- Importado
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, logout } = useAuth(); // <--- Usamos el usuario real
+  const { user, logout } = useAuth();
   const location = useLocation();
 
-  // Mapeo: Rol de DB -> Clave de Menú
-  // "Pastor" y "Admin" ven todo. "Lider" ve intermedio. "Colaborador" ve básico.
   let roleKey = 'COLABORADOR';
   const role = user?.role || '';
   
@@ -62,12 +60,15 @@ const Layout = ({ children }) => {
         </div>
 
         {/* INFO USUARIO */}
-        <div className="px-6 py-6 bg-blue-50 border-b border-blue-100">
-          <p className="text-xs font-bold text-blue-400 uppercase mb-1">Hola,</p>
-          <h3 className="font-bold text-blue-900 truncate">{user?.name || 'Usuario'}</h3>
-          <span className="inline-block mt-1 text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold uppercase">
-            {user?.role}
-          </span>
+        <div className="px-6 py-6 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+          <div className="overflow-hidden">
+            <p className="text-xs font-bold text-blue-400 uppercase mb-1">Hola,</p>
+            <h3 className="font-bold text-blue-900 truncate max-w-[120px]">{user?.name || 'Usuario'}</h3>
+          </div>
+          
+          <Link to="/profile" onClick={() => setIsOpen(false)} className="bg-white p-2 rounded-lg text-blue-600 shadow-sm hover:text-blue-800 hover:shadow-md transition-all" title="Mis Datos">
+            <UserCog size={20} />
+          </Link>
         </div>
 
         <nav className="p-4 space-y-1 mt-2">
@@ -92,10 +93,7 @@ const Layout = ({ children }) => {
         </nav>
 
         <div className="absolute bottom-0 w-full p-4 border-t border-gray-100">
-          <button 
-            onClick={logout} 
-            className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-red-500 w-full text-sm font-medium transition-colors"
-          >
+          <button onClick={logout} className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-red-500 w-full text-sm font-medium transition-colors">
             <LogOut size={20} /> Cerrar Sesión
           </button>
         </div>

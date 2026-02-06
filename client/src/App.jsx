@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 
-// --- IMPORTACIONES DE PÁGINAS ---
+// --- IMPORTACIONES ---
 import People from './pages/People';
 import Plans from './pages/Plans';
 import ServiceDetail from './pages/ServiceDetail';
@@ -14,18 +14,12 @@ import Admin from './pages/Admin';
 import Anniversaries from './pages/Anniversaries';
 import MyCredential from './pages/MyCredential';
 import Reception from './pages/Reception';
+import Profile from './pages/Profile'; // <--- Nueva Página
 
-// --- COMPONENTE DE RUTA PROTEGIDA ---
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-
-  // Mientras carga el contexto (leyendo localStorage), mostramos algo simple
   if (loading) return <div className="h-screen flex items-center justify-center text-gray-500">Cargando...</div>;
-
-  // Si no hay usuario, mandamos al login
   if (!user) return <Navigate to="/login" replace />;
-
-  // Si hay usuario, mostramos el Layout con el contenido
   return <Layout>{children}</Layout>;
 };
 
@@ -34,18 +28,15 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          
-          {/* RUTA PÚBLICA (LOGIN) - Sin Layout */}
+          {/* LOGIN */}
           <Route path="/login" element={<Login />} />
 
-          {/* RUTAS PROTEGIDAS (Todas dentro del Layout) */}
+          {/* RUTAS PROTEGIDAS */}
           <Route path="/*" element={
             <ProtectedRoute>
               <Routes>
-                {/* Redirección inicial: Si entran a "/", van a eventos */}
                 <Route path="/" element={<Navigate to="/events" replace />} />
                 
-                {/* Módulos */}
                 <Route path="/people" element={<People />} />
                 <Route path="/plans" element={<Plans />} />
                 <Route path="/plans/:id" element={<ServiceDetail />} />
@@ -55,16 +46,15 @@ function App() {
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/anniversaries" element={<Anniversaries />} />
                 
-                {/* Módulos Específicos de Rol */}
+                {/* Módulos de Usuario */}
                 <Route path="/credential" element={<MyCredential />} />
                 <Route path="/reception" element={<Reception />} />
+                <Route path="/profile" element={<Profile />} /> {/* <--- Ruta */}
                 
-                {/* Ruta 404 dentro del sistema */}
                 <Route path="*" element={<div className="p-10 text-center text-gray-400">Página no encontrada</div>} />
               </Routes>
             </ProtectedRoute>
           } />
-
         </Routes>
       </BrowserRouter>
     </AuthProvider>

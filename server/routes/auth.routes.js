@@ -13,7 +13,6 @@ router.post('/login', async (req, res) => {
   console.log(`🔍 Intentando login con: ${email}`);
 
   try {
-    // 1. Buscar Usuario y traer datos de su Miembro asociado
     const user = await prisma.user.findUnique({
       where: { email },
       include: { 
@@ -22,11 +21,10 @@ router.post('/login', async (req, res) => {
     });
 
     if (!user) {
-      console.log('❌ Usuario no encontrado en base de datos');
+      console.log('❌ Usuario no encontrado');
       return res.status(401).json({ error: 'Credenciales inválidas.' });
     }
 
-    // 2. Verificar Contraseña
     const isValid = await bcrypt.compare(password, user.password);
     
     if (!isValid) {
@@ -36,11 +34,9 @@ router.post('/login', async (req, res) => {
 
     console.log('🎉 Login exitoso');
 
-    // 3. Definir Rol para el Frontend
-    // Si tiene rol de iglesia (Pastor, Lider) lo usamos, sino el del sistema
+    // Usar rol de iglesia si existe, sino el del usuario
     const userRole = user.member?.churchRole || user.role || 'Colaborador';
     
-    // 4. Responder al Frontend
     res.json({
       id: user.id,
       name: user.name,
@@ -48,7 +44,8 @@ router.post('/login', async (req, res) => {
       role: userRole, 
       memberId: user.member?.id,
       photo: user.member?.photo,
-      firstName: user.member?.firstName
+      firstName: user.member?.firstName,
+      lastName: user.member?.lastName // Agregamos apellido para mostrar en credencial
     });
 
   } catch (error) {
@@ -58,41 +55,83 @@ router.post('/login', async (req, res) => {
 });
 
 // ==========================================
-// RUTA 2: RESCATE / EMERGENCIA (GET)
+// RUTA 2: ACTUALIZAR PERFIL (PUT)
+// ==========================================
+router.put('/profile', async (req, res) => {
+  const { userId, photo, password } = req.body;
+
+  try {
+    const updateData = {};
+    const memberUpdateData = {};
+
+    // 1. Si hay contraseña nueva, la encriptamos
+    if (password && password.trim() !== "") {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
+    }
+
+    // 2. Si hay foto, preparamos la actualización para la tabla Member
+    if (photo) {
+      memberUpdateData.photo = photo;
+    }
+
+    // 3. Ejecutar transacción
+    await prisma.$transaction(async (prisma) => {
+      // Actualizar User
+      if (Object.keys(updateData).length > 0) {
+        await prisma.user.update({
+          where: { id: parseInt(userId) },
+          data: updateData
+        });
+      }
+
+      // Actualizar Member (Foto)
+      if (Object.keys(memberUpdateData).length > 0) {
+        const member = await prisma.member.findUnique({ where: { userId: parseInt(userId) } });
+        if (member) {
+          await prisma.member.update({
+            where: { id: member.id },
+            data: memberUpdateData
+          });
+        }
+      }
+    });
+
+    res.json({ success: true, message: 'Perfil actualizado' });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al actualizar perfil' });
+  }
+});
+
+// ==========================================
+// RUTA 3: RESCATE / EMERGENCIA (GET)
 // ==========================================
 router.get('/rescue', async (req, res) => {
   const email = 'admin@mdsq.com';
   const password = 'admin123';
   
   try {
-    console.log('🚑 Iniciando protocolo de rescate...');
-
-    // 1. Encriptar contraseña nueva
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 2. Limpieza: Si ya existe ese usuario, lo borramos para crearlo limpio
     const existingUser = await prisma.user.findUnique({ where: { email } });
     
     if (existingUser) {
-        console.log('♻️ Usuario existente detectado. Borrando...');
-        // Borramos primero el miembro asociado (por las relaciones)
         await prisma.member.deleteMany({ where: { userId: existingUser.id } });
-        // Borramos el usuario
         await prisma.user.delete({ where: { email } });
     }
 
-    // 3. Crear el Super Admin Nuevo
     await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         name: 'Super Admin',
-        role: 'ADMIN', // Rol interno
+        role: 'ADMIN',
         member: {
           create: {
             firstName: 'Super',
             lastName: 'Admin',
-            churchRole: 'Pastor', // Rol para ver todo el menú
+            churchRole: 'Pastor',
             email: email,
             address: 'Oficina Central',
             city: 'Quilmes'
@@ -101,25 +140,10 @@ router.get('/rescue', async (req, res) => {
       }
     });
 
-    console.log('✅ Usuario de rescate creado con éxito.');
-
-    // 4. Respuesta visual
-    res.send(`
-      <div style="font-family: sans-serif; text-align: center; padding: 50px;">
-        <h1 style="color: green;">¡Usuario de Rescate Creado! 🚑</h1>
-        <p>Ya puedes iniciar sesión con estos datos:</p>
-        <div style="background: #f0f0f0; display: inline-block; padding: 20px; border-radius: 10px; text-align: left;">
-          <p>📧 Email: <b>${email}</b></p>
-          <p>🔑 Password: <b>${password}</b></p>
-        </div>
-        <br><br>
-        <a href="https://mdsq.hcloud.one/login" style="background: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Ir al Login</a>
-      </div>
-    `);
+    res.send(`<h1>¡Usuario de Rescate Creado! 🚑</h1><p>Email: ${email}<br>Pass: ${password}</p>`);
 
   } catch (error) {
-    console.error(error);
-    res.status(500).send(`<h1>Error Grave 💥</h1><p>${error.message}</p>`);
+    res.status(500).send(`Error: ${error.message}`);
   }
 });
 
