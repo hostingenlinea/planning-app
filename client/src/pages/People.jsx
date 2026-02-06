@@ -25,7 +25,8 @@ const People = () => {
     churchRole: 'Colaborador', password: '' 
   });
 
-  const isAdmin = user?.role === 'Admin' || user?.role === 'Pastor';
+  // Solo Admin y Pastor pueden gestionar personas (Productor NO gestiona gente, solo planes)
+  const canManagePeople = ['Admin', 'Pastor'].includes(user?.role || '');
 
   useEffect(() => { fetchMembers(); }, []);
 
@@ -64,7 +65,7 @@ const People = () => {
       birthDate: member.birthDate ? member.birthDate.split('T')[0] : '',
       photo: member.photo || '',
       churchRole: member.churchRole || 'Colaborador',
-      password: '' // Pass vacía en edición
+      password: '' 
     });
     setIsModalOpen(true);
   };
@@ -79,7 +80,6 @@ const People = () => {
         const canvas = document.createElement('canvas');
         canvas.width = 400; canvas.height = 400;
         const ctx = canvas.getContext('2d');
-        // Simple center crop logic
         let sWidth = img.width > img.height ? img.height : img.width;
         let sHeight = sWidth;
         let sx = (img.width - sWidth) / 2;
@@ -122,7 +122,7 @@ const People = () => {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold text-gray-800">Directorio</h1>
-        {isAdmin && (
+        {canManagePeople && (
           <button onClick={openCreateModal} className="bg-blue-900 text-white px-5 py-3 rounded-xl hover:bg-blue-800 shadow-lg flex items-center gap-2 font-bold">
             <Plus size={20} /> Nuevo
           </button>
@@ -138,7 +138,7 @@ const People = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMembers.map(member => (
             <div key={member.id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative group">
-              {isAdmin && (
+              {canManagePeople && (
                 <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => openEditModal(member)} className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100"><Edit size={16} /></button>
                   <button onClick={() => handleDelete(member.id)} className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100"><Trash2 size={16} /></button>
@@ -184,7 +184,6 @@ const People = () => {
                 {!editingId && (
                   <div className="md:col-span-2">
                     <input required type="text" placeholder="Contraseña Inicial" className="w-full border p-3 rounded-xl" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
-                    <p className="text-xs text-gray-400 mt-1">Se enviará por email al usuario.</p>
                   </div>
                 )}
                 
@@ -192,7 +191,11 @@ const People = () => {
                 <input type="date" className="border p-3 rounded-xl" value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} />
                 
                 <select className="border p-3 rounded-xl" value={formData.churchRole} onChange={e => setFormData({...formData, churchRole: e.target.value})}>
-                  <option>Colaborador</option><option>Lider</option><option>Pastor</option><option>Recepción</option>
+                  <option>Colaborador</option>
+                  <option>Productor</option> {/* AGREGADO */}
+                  <option>Lider</option>
+                  <option>Pastor</option>
+                  <option>Recepción</option>
                 </select>
                 
                 <input type="text" placeholder="Ciudad" className="border p-3 rounded-xl" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />

@@ -1,316 +1,186 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import { 
-  ArrowLeft, Clock, Calendar, Plus, Trash2, X, CheckCircle, Users,
-  // Iconos personalizados
-  Footprints,     // Walk-in
-  PlayCircle,     // Preroll
-  Music,          // Worship / Canción
-  Mic2,           // Conducción
-  HeartHandshake, // Conexión
-  Gift,           // Ofrendas
-  Monitor,        // Noticias
-  Megaphone,      // Anuncio
-  Star,           // Voluntario
-  BookOpen,       // Mensaje
-  Sparkles,       // Ministración
-  UserPlus,       // Llamado
-  LogOut          // Walk-out
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors 
+} from '@dnd-kit/core';
+import { 
+  arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable 
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { 
+  Calendar, Clock, Music, FileText, GripVertical, Trash2, Plus, Save, ArrowLeft 
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const ServiceDetail = () => {
-  const { id } = useParams();
-  const [service, setService] = useState(null);
-  const [areas, setAreas] = useState([]); // Usamos "areas" en lugar de "ministries"
-  const [loading, setLoading] = useState(true);
-  
-  // Estado para cronograma
-  const [newItem, setNewItem] = useState({ title: '', duration: 5, type: 'WORSHIP' });
-  const [isAddingPlan, setIsAddingPlan] = useState(false);
-
-  // Estado para asignaciones
-  const [assigningTeamId, setAssigningTeamId] = useState(null);
-
-  useEffect(() => {
-    fetchData();
-  }, [id]);
-
-  const fetchData = async () => {
-    try {
-      const [serviceRes, areaRes] = await Promise.all([
-        axios.get(`${API_URL}/api/services/${id}`),
-        axios.get(`${API_URL}/api/ministries`) // La API interna sigue siendo ministries
-      ]);
-      setService(serviceRes.data);
-      setAreas(areaRes.data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- LÓGICA CRONOGRAMA ---
-  const handleAddPlanItem = async (e) => {
-    e.preventDefault();
-    const nextOrder = (service.plans.length > 0) ? Math.max(...service.plans.map(p => p.order)) + 1 : 1;
-    await axios.post(`${API_URL}/api/services/${id}/plan`, { ...newItem, order: nextOrder });
-    setIsAddingPlan(false);
-    setNewItem({ title: '', duration: 5, type: 'WORSHIP' }); 
-    fetchData();
-  };
-
-  const handleDeletePlanItem = async (itemId) => {
-    if(!confirm('¿Borrar ítem?')) return;
-    await axios.delete(`${API_URL}/api/services/plan/${itemId}`);
-    fetchData();
-  };
-
-  // --- LÓGICA ASIGNACIONES ---
-  const handleAssignMember = async (teamId, memberId) => {
-    try {
-      await axios.post(`${API_URL}/api/services/${id}/assignments`, { teamId, memberId });
-      setAssigningTeamId(null);
-      fetchData();
-    } catch (error) {
-      alert(error.response?.data?.error || 'Error al asignar');
-    }
-  };
-
-  const handleDeleteAssignment = async (assignmentId) => {
-    if(!confirm('¿Quitar a esta persona del servicio?')) return;
-    await axios.delete(`${API_URL}/api/services/assignments/${assignmentId}`);
-    fetchData();
-  };
-
-  // --- ICONOS ---
-  const getTypeIcon = (type) => {
-    switch(type) {
-      case 'WALK_IN': return <Footprints size={18} className="text-gray-400"/>;
-      case 'PREROLL': return <PlayCircle size={18} className="text-blue-400"/>;
-      case 'WORSHIP': return <Music size={18} className="text-blue-600"/>;
-      case 'CONDUCCION': return <Mic2 size={18} className="text-purple-500"/>;
-      case 'CONEXION': return <HeartHandshake size={18} className="text-pink-500"/>;
-      case 'OFRENDAS': return <Gift size={18} className="text-green-500"/>;
-      case 'NOTICIAS': return <Monitor size={18} className="text-orange-500"/>;
-      case 'ANUNCIO': return <Megaphone size={18} className="text-orange-600"/>;
-      case 'VOLUNTARIO': return <Star size={18} className="text-yellow-500"/>;
-      case 'MENSAJE': return <BookOpen size={18} className="text-indigo-600"/>;
-      case 'MINISTRACION': return <Sparkles size={18} className="text-purple-400"/>;
-      case 'LLAMADO': return <UserPlus size={18} className="text-red-500"/>;
-      case 'CANCION_FINAL': return <Music size={18} className="text-blue-800"/>;
-      case 'WALK_OUT': return <LogOut size={18} className="text-gray-500"/>;
-      default: return <Clock size={18} className="text-gray-400"/>;
-    }
-  };
-
-  if (loading) return <div className="p-10 text-center">Cargando culto...</div>;
-  if (!service) return <div className="p-10 text-center">No encontrado.</div>;
-
-  let currentTime = new Date(service.date);
+const SortableItem = ({ item, onDelete, onChange, canEdit }) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6 border-b pb-4">
-        <Link to="/plans" className="text-gray-500 hover:text-blue-600 flex items-center gap-1 mb-2">
-          <ArrowLeft size={18} /> Volver
-        </Link>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{service.name}</h1>
-            <div className="flex items-center gap-3 text-gray-500 mt-1 text-sm">
-              <span className="flex items-center gap-1"><Calendar size={16}/> {new Date(service.date).toLocaleDateString()}</span>
-              <span className="flex items-center gap-1"><Clock size={16}/> {new Date(service.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} hs</span>
-              <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-bold uppercase">{service.type}</span>
-            </div>
-          </div>
-          <div className="text-right bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
-             <div className="text-xs text-blue-600 font-bold uppercase tracking-wider">Duración</div>
-             <div className="text-2xl font-bold text-blue-900">
-               {service.plans.reduce((acc, curr) => acc + (curr.duration || 0), 0)} min
-             </div>
-          </div>
+    <div ref={setNodeRef} style={style} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4 mb-3 group hover:border-blue-200 transition-colors">
+      {canEdit ? (
+        <div {...attributes} {...listeners} className="text-gray-300 cursor-grab hover:text-blue-500">
+          <GripVertical size={20} />
+        </div>
+      ) : <div className="w-5"></div>}
+
+      <div className={`p-2 rounded-lg ${item.type === 'SONG' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
+        {item.type === 'SONG' ? <Music size={20}/> : <FileText size={20}/>}
+      </div>
+
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="md:col-span-2">
+           <input 
+             type="text" value={item.title} placeholder="Título..." disabled={!canEdit}
+             onChange={(e) => onChange(item.id, 'title', e.target.value)}
+             className={`w-full font-bold text-gray-800 outline-none bg-transparent ${!canEdit && 'cursor-default'}`}
+           />
+           <input 
+             type="text" value={item.description || ''} placeholder="Detalle..." disabled={!canEdit}
+             onChange={(e) => onChange(item.id, 'description', e.target.value)}
+             className={`w-full text-sm text-gray-500 outline-none bg-transparent ${!canEdit && 'cursor-default'}`}
+           />
+        </div>
+        <div className="flex items-center gap-2">
+           <Clock size={14} className="text-gray-400"/>
+           <input 
+             type="text" value={item.duration} placeholder="00:00" disabled={!canEdit}
+             onChange={(e) => onChange(item.id, 'duration', e.target.value)}
+             className={`w-16 text-sm font-medium text-gray-600 bg-gray-50 rounded px-2 py-1 text-center outline-none ${!canEdit && 'bg-transparent'}`}
+           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* COLUMNA IZQUIERDA: CRONOGRAMA */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <Clock size={20} className="text-gray-400"/> Orden del Servicio
-            </h2>
-            <button 
-              onClick={() => setIsAddingPlan(!isAddingPlan)}
-              className="text-sm bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 text-gray-700 font-medium shadow-sm"
-            >
-              + Agregar Ítem
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-             {/* Formulario Agregar Ítem */}
-             {isAddingPlan && (
-              <form onSubmit={handleAddPlanItem} className="bg-blue-50 p-4 border-b border-blue-100 flex flex-col md:flex-row gap-2 items-end">
-                <div className="flex-1 w-full">
-                    <label className="text-xs font-bold text-blue-800">Título</label>
-                    <input className="w-full p-2 rounded border text-sm" placeholder="Ej: Gracia Sublime" value={newItem.title} onChange={e=>setNewItem({...newItem, title:e.target.value})} autoFocus />
-                </div>
-                
-                <div className="w-full md:w-auto">
-                    <label className="text-xs font-bold text-blue-800">Tipo</label>
-                    <select 
-                      className="w-full p-2 rounded border text-sm bg-white outline-none" 
-                      value={newItem.type} 
-                      onChange={e=>setNewItem({...newItem, type:e.target.value})}
-                    >
-                      <option value="WALK_IN">Walk-in</option>
-                      <option value="PREROLL">Preroll</option>
-                      <option value="WORSHIP">Worship</option>
-                      <option value="CONDUCCION">Conducción</option>
-                      <option value="CONEXION">Conexión</option>
-                      <option value="OFRENDAS">Ofrendas</option>
-                      <option value="NOTICIAS">Noticias</option>
-                      <option value="ANUNCIO">Anuncio</option>
-                      <option value="VOLUNTARIO">Voluntario del Mes</option>
-                      <option value="MENSAJE">Mensaje</option>
-                      <option value="MINISTRACION">Ministración</option>
-                      <option value="LLAMADO">Llamado y Oración</option>
-                      <option value="CANCION_FINAL">Canción Final</option>
-                      <option value="WALK_OUT">Walk-out</option>
-                    </select>
-                </div>
-
-                <div className="w-20">
-                    <label className="text-xs font-bold text-blue-800">Min</label>
-                    <input type="number" className="w-full p-2 rounded border text-sm" value={newItem.duration} onChange={e=>setNewItem({...newItem, duration:e.target.value})} />
-                </div>
-                
-                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 h-[38px]">
-                  Guardar
-                </button>
-              </form>
-            )}
-
-            {/* Lista de Ítems */}
-            <div className="divide-y divide-gray-100">
-              {service.plans.map((item) => {
-                const start = new Date(currentTime);
-                currentTime.setMinutes(currentTime.getMinutes() + (item.duration || 0));
-                return (
-                  <div key={item.id} className="group flex items-center p-3 hover:bg-gray-50 transition-colors gap-3">
-                    <div className="w-12 text-xs text-gray-400 font-mono text-right">{start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                    <div className="p-2 bg-gray-50 rounded-lg border border-gray-100 shadow-sm">{getTypeIcon(item.type)}</div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-800 text-sm">{item.title}</h4>
-                      <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{item.duration} min</span>
-                    </div>
-                    <button onClick={() => handleDeletePlanItem(item.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 p-2"><Trash2 size={16}/></button>
-                  </div>
-                );
-              })}
-              {service.plans.length === 0 && <div className="p-8 text-center text-gray-400 text-sm italic">Cronograma vacío.</div>}
-            </div>
-          </div>
-        </div>
-
-        {/* COLUMNA DERECHA: EQUIPOS (ÁREAS) */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <Users size={20} className="text-gray-400"/> Equipos
-          </h2>
-
-          <div className="space-y-4">
-            {areas.map(area => (
-              <div key={area.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gray-50 px-3 py-2 border-b border-gray-100 font-bold text-xs text-gray-500 uppercase tracking-wider">
-                  {area.name}
-                </div>
-                
-                <div className="divide-y divide-gray-100">
-                  {area.teams.map(team => {
-                    const assignedHere = service.assignments.filter(a => a.teamId === team.id);
-                    
-                    return (
-                      <div key={team.id} className="p-3">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-semibold text-gray-700 text-sm">{team.name}</span>
-                          <button 
-                            onClick={() => setAssigningTeamId(assigningTeamId === team.id ? null : team.id)}
-                            className="text-blue-600 hover:bg-blue-50 p-1 rounded transition"
-                            title="Programar persona"
-                          >
-                            <Plus size={16} />
-                          </button>
-                        </div>
-
-                        {/* Asignados */}
-                        <div className="space-y-1">
-                          {assignedHere.map(assign => (
-                            <div key={assign.id} className="flex items-center justify-between text-sm bg-green-50 text-green-800 px-2 py-1 rounded border border-green-100">
-                              <div className="flex items-center gap-2">
-                                <CheckCircle size={12} />
-                                <span>{assign.member.firstName} {assign.member.lastName}</span>
-                              </div>
-                              <button onClick={() => handleDeleteAssignment(assign.id)} className="text-green-300 hover:text-red-600">
-                                <X size={14}/>
-                              </button>
-                            </div>
-                          ))}
-                          {assignedHere.length === 0 && !assigningTeamId && (
-                            <div className="text-xs text-gray-400 italic">0 asignados</div>
-                          )}
-                        </div>
-
-                        {/* SELECTOR */}
-                        {assigningTeamId === team.id && (
-                          <div className="mt-2 bg-gray-50 p-2 rounded border border-gray-200 animate-fade-in">
-                            <p className="text-xs text-gray-500 mb-2 font-medium">Seleccionar de {team.name}:</p>
-                            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
-                              {team.members && team.members.length > 0 ? (
-                                team.members.map(tm => {
-                                  const isAssigned = assignedHere.some(a => a.memberId === tm.memberId);
-                                  if (isAssigned) return null;
-
-                                  return (
-                                    <button
-                                      key={tm.id}
-                                      onClick={() => handleAssignMember(team.id, tm.memberId)}
-                                      className="text-left text-sm px-2 py-1.5 bg-white hover:bg-blue-50 border border-gray-100 rounded shadow-sm flex items-center gap-2"
-                                    >
-                                      <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                                        {tm.member.firstName[0]}
-                                      </div>
-                                      {tm.member.firstName} {tm.member.lastName}
-                                    </button>
-                                  );
-                                })
-                              ) : (
-                                <p className="text-xs text-red-400">Equipo vacío.</p>
-                              )}
-                              <Link to="/areas" className="text-xs text-center text-blue-500 hover:underline mt-1 pt-1 border-t block">
-                                Gestionar Miembros
-                              </Link>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            {areas.length === 0 && <div className="text-center text-gray-400 text-sm">Crea Áreas para asignar equipos.</div>}
-          </div>
-        </div>
-      </div>
+      {canEdit && (
+        <button onClick={() => onDelete(item.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Trash2 size={18} />
+        </button>
+      )}
     </div>
   );
 };
 
+const ServiceDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const [service, setService] = useState(null);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // --- PERMISO TOTAL: SOLO ADMIN, PASTOR, PRODUCTOR ---
+  const canEdit = ['Admin', 'Pastor', 'Productor'].includes(user?.role || '');
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  useEffect(() => {
+    fetchService();
+  }, [id]);
+
+  const fetchService = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/services/${id}`);
+      setService(res.data);
+      setItems(res.data.items.sort((a, b) => a.order - b.order));
+    } catch (error) { console.error(error); } 
+    finally { setLoading(false); }
+  };
+
+  const handleDragEnd = (event) => {
+    if (!canEdit) return;
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      setItems((items) => {
+        const oldIndex = items.findIndex(i => i.id === active.id);
+        const newIndex = items.findIndex(i => i.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleChange = (itemId, field, value) => {
+    if (!canEdit) return;
+    setItems(items.map(i => i.id === itemId ? { ...i, [field]: value } : i));
+  };
+
+  const handleAddItem = (type) => {
+    if (!canEdit) return;
+    const newItem = { id: Date.now(), type, title: type === 'SONG' ? 'Nueva Canción' : 'Nuevo Bloque', description: '', duration: '5:00', isNew: true };
+    setItems([...items, newItem]);
+  };
+
+  const handleDeleteItem = (itemId) => {
+    if (!canEdit) return;
+    if (!confirm('¿Quitar este ítem?')) return;
+    setItems(items.filter(i => i.id !== itemId));
+  };
+
+  const handleSave = async () => {
+    if (!canEdit) return;
+    setSaving(true);
+    try {
+      const payload = { ...service, items: items.map((item, index) => ({ ...item, order: index })) };
+      await axios.put(`${API_URL}/api/services/${id}`, payload);
+      alert('Planificación guardada');
+      fetchService();
+    } catch (error) { alert('Error al guardar'); } 
+    finally { setSaving(false); }
+  };
+
+  if (loading) return <div className="p-10 text-center">Cargando...</div>;
+
+  return (
+    <div className="p-4 md:p-8 max-w-5xl mx-auto pb-24">
+      <div className="mb-8">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 hover:text-blue-900 mb-4 text-sm font-bold">
+          <ArrowLeft size={16}/> Volver
+        </button>
+        <div className="flex justify-between items-start">
+           <div>
+             <h1 className="text-3xl font-extrabold text-gray-800">{service?.name}</h1>
+             <div className="flex items-center gap-4 mt-2 text-gray-500">
+               <span className="flex items-center gap-1"><Calendar size={16}/> {service?.date && new Date(service.date).toLocaleDateString()}</span>
+             </div>
+           </div>
+           {canEdit && (
+             <button onClick={handleSave} disabled={saving} className="bg-blue-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-800 flex items-center gap-2 shadow-lg">
+               {saving ? 'Guardando...' : <><Save size={18}/> Guardar Cambios</>}
+             </button>
+           )}
+        </div>
+      </div>
+
+      {!canEdit && (
+        <div className="bg-orange-50 border border-orange-200 text-orange-700 px-4 py-3 rounded-xl mb-6 text-sm flex items-center gap-2">
+          <span>🔒 Estás en modo <b>Solo Lectura</b>. Contacta a un Productor para realizar cambios.</span>
+        </div>
+      )}
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={items} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {items.map(item => (
+              <SortableItem key={item.id} item={item} onDelete={handleDeleteItem} onChange={handleChange} canEdit={canEdit} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+
+      {canEdit && (
+        <div className="mt-8 flex gap-4 justify-center border-t pt-8 border-dashed border-gray-300">
+          <button onClick={() => handleAddItem('GENERIC')} className="flex items-center gap-2 px-5 py-3 rounded-full bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition"><Plus size={18}/> Agregar Bloque</button>
+          <button onClick={() => handleAddItem('SONG')} className="flex items-center gap-2 px-5 py-3 rounded-full bg-purple-50 text-purple-700 font-bold hover:bg-purple-100 transition"><Music size={18}/> Agregar Canción</button>
+        </div>
+      )}
+    </div>
+  );
+};
 export default ServiceDetail;

@@ -13,35 +13,17 @@ const Layout = ({ children }) => {
   const location = useLocation();
   const [showBirthdayModal, setShowBirthdayModal] = useState(false);
 
-  // --- LÓGICA DE CUMPLEAÑOS ---
   useEffect(() => {
     if (user?.member?.birthDate) {
       const today = new Date();
-      const birth = new Date(user.member.birthDate); // La fecha viene en UTC o ISO
+      const birth = new Date(user.member.birthDate);
+      // Lógica simple de cumpleaños para el día local
+      const tM = today.getMonth(); const tD = today.getDate();
+      const bM = birth.getMonth(); const bD = birth.getDate();
       
-      // Comparamos solo Mes y Día (getMonth empieza en 0)
-      // Ajustamos timezone sumando horas si es necesario, pero getMonth/getDate locales suelen funcionar bien
-      // Si la fecha guardada es "1990-05-20T00:00:00.000Z", new Date lo convierte a local.
-      
-      if (today.getMonth() === birth.getMonth() && today.getDate() === birth.getDate() + 1) { 
-        // NOTA: A veces birthDate al venir de DB puede tener un offset de día.
-        // Si notas que saluda un día antes, quita el "+ 1". Si es un día después, ajusta.
-        // La forma más segura es usar UTC para ambos:
-        // if (today.getUTCMonth() === birth.getUTCMonth() && today.getUTCDate() === birth.getUTCDate()) ...
-      }
-      
-      // Lógica simplificada:
-      const tM = today.getMonth();
-      const tD = today.getDate();
-      const bM = birth.getMonth();
-      const bD = birth.getDate(); // A veces hay que corregir por zona horaria, prueba primero directo.
-
-      // Si coincide, verificamos sessionStorage para no molestar en cada F5
-      const isBirthday = (tM === bM && tD === bD); // Ajustar según zona horaria de tu server
-      
-      if (isBirthday) {
-         const greeted = sessionStorage.getItem('birthdayGreeted');
-         if (!greeted) {
+      // Ajuste básico: si coincide mes y día
+      if (tM === bM && tD === bD) {
+         if (!sessionStorage.getItem('birthdayGreeted')) {
            setShowBirthdayModal(true);
            launchConfetti();
            sessionStorage.setItem('birthdayGreeted', 'true');
@@ -60,10 +42,12 @@ const Layout = ({ children }) => {
     }());
   };
 
-  // --- MENU POR ROLES ---
+  // --- LÓGICA DE ROLES ---
   let roleKey = 'COLABORADOR';
   const role = user?.role || '';
+  
   if (role === 'Admin' || role === 'Pastor') roleKey = 'ADMIN';
+  else if (role === 'Productor') roleKey = 'PRODUCTOR'; // <--- AGREGADO
   else if (role === 'Lider') roleKey = 'LIDER';
   else if (role === 'Recepción') roleKey = 'RECEPCION';
 
@@ -76,6 +60,12 @@ const Layout = ({ children }) => {
       { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' },
       { name: 'Organigrama', icon: <Network size={20} />, path: '/organigram' },
       { name: 'Configuración', icon: <Settings size={20} />, path: '/admin' },
+    ],
+    PRODUCTOR: [ // Menú especial para Productor
+      { name: 'Planificación', icon: <Church size={20} />, path: '/plans' }, // Acceso prioritario
+      { name: 'Eventos', icon: <Calendar size={20} />, path: '/events' },
+      { name: 'Directorio', icon: <Users size={20} />, path: '/people' },
+      { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' },
     ],
     LIDER: [
       { name: 'Mi Equipo', icon: <Users size={20} />, path: '/people' },
