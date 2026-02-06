@@ -73,10 +73,18 @@ const People = () => {
     try {
       await axios.post(`${API_URL}/api/members`, newMember);
       setIsModalOpen(false);
+      // Limpiar formulario
       setNewMember({ firstName: '', lastName: '', phone: '', email: '', address: '', city: '', birthDate: '', photo: '', password: '' });
       fetchMembers();
-    } catch (error) { alert('Error al crear. Verifica si el email ya existe.'); }
-    finally { setSaving(false); }
+      alert('¡Persona creada con éxito!'); // Feedback positivo
+    } catch (error) {
+      console.error(error);
+      // AQUI ESTA LA CLAVE: Mostrar el mensaje real del servidor
+      const serverMessage = error.response?.data?.error;
+      alert(serverMessage || 'Error desconocido al conectar con el servidor.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id) => {
