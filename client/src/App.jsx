@@ -11,6 +11,7 @@ import Events from './pages/Events';
 import Admin from './pages/Admin';
 import MyCredential from './pages/MyCredential';
 import Reception from './pages/Reception';
+import Anniversaries from './pages/Anniversaries';
 
 function App() {
   return (
@@ -46,6 +47,9 @@ function App() {
               <p>Este módulo está en construcción.</p>
             </div>
           } />
+
+          {/*Módulo Aniversarios*/}
+          <Route path="/anniversaries" element={<Anniversaries />} />
 
           {/* Módulo Administrador */}
           <Route path="/admin" element={<Admin />} />
