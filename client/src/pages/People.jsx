@@ -12,7 +12,7 @@ const People = () => {
   const [saving, setSaving] = useState(false);
 
   const [newMember, setNewMember] = useState({
-    firstName: '', lastName: '', phone: '', email: '', 
+    firstName: '', lastName: '', phone: '', email: '',
     address: '', city: '', birthDate: '', photo: '', password: ''
   });
 
@@ -22,7 +22,7 @@ const People = () => {
     try {
       const res = await axios.get(`${API_URL}/api/members`);
       setMembers(res.data);
-    } catch (error) {} finally { setLoading(false); }
+    } catch (error) { } finally { setLoading(false); }
   };
 
   // --- LÓGICA DE FOTO AUTOMÁTICA (4x4) ---
@@ -36,7 +36,7 @@ const People = () => {
       img.onload = () => {
         // Crear un canvas cuadrado (400x400 px para que no pese mucho)
         const canvas = document.createElement('canvas');
-        const size = 400; 
+        const size = 400;
         canvas.width = size;
         canvas.height = size;
         const ctx = canvas.getContext('2d');
@@ -75,13 +75,13 @@ const People = () => {
       setIsModalOpen(false);
       setNewMember({ firstName: '', lastName: '', phone: '', email: '', address: '', city: '', birthDate: '', photo: '', password: '' });
       fetchMembers();
-    } catch (error) { alert('Error al crear. Verifica si el email ya existe.'); } 
+    } catch (error) { alert('Error al crear. Verifica si el email ya existe.'); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
-    if(!confirm('¿Eliminar persona?')) return;
-    try { await axios.delete(`${API_URL}/api/members/${id}`); fetchMembers(); } catch (error) {}
+    if (!confirm('¿Eliminar persona?')) return;
+    try { await axios.delete(`${API_URL}/api/members/${id}`); fetchMembers(); } catch (error) { }
   };
 
   const filtered = members.filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -106,19 +106,19 @@ const People = () => {
         {filtered.map((m) => (
           <div key={m.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex gap-4 items-center">
             <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 border border-gray-200 shadow-sm">
-               {m.photo ? (
-                 <img src={m.photo} className="w-full h-full object-cover" alt="Avatar"/>
-               ) : (
-                 <span className="font-bold text-gray-400 text-lg">{m.firstName[0]}</span>
-               )}
+              {m.photo ? (
+                <img src={m.photo} className="w-full h-full object-cover" alt="Avatar" />
+              ) : (
+                <span className="font-bold text-gray-400 text-lg">{m.firstName[0]}</span>
+              )}
             </div>
             <div className="flex-1 overflow-hidden text-sm space-y-0.5">
               <h3 className="font-bold text-gray-800 text-base">{m.firstName} {m.lastName}</h3>
               <p className="text-blue-600 text-[10px] font-bold uppercase tracking-wider">{m.churchRole}</p>
-              {m.phone && <div className="flex gap-2 text-gray-500 text-xs"><Phone size={10}/> {m.phone}</div>}
-              {m.city && <div className="flex gap-2 text-gray-500 text-xs"><MapPin size={10}/> {m.city}</div>}
+              {m.phone && <div className="flex gap-2 text-gray-500 text-xs"><Phone size={10} /> {m.phone}</div>}
+              {m.city && <div className="flex gap-2 text-gray-500 text-xs"><MapPin size={10} /> {m.city}</div>}
             </div>
-            <button onClick={() => handleDelete(m.id)} className="text-gray-300 hover:text-red-500 p-2"><Trash2 size={16}/></button>
+            <button onClick={() => handleDelete(m.id)} className="text-gray-300 hover:text-red-500 p-2"><Trash2 size={16} /></button>
           </div>
         ))}
       </div>
@@ -128,29 +128,29 @@ const People = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden my-8 animate-fade-in">
             <div className="bg-blue-900 px-6 py-4 flex justify-between items-center text-white">
-              <h2 className="text-lg font-bold flex items-center gap-2"><UserPlus size={24}/> Alta de Persona</h2>
-              <button onClick={() => setIsModalOpen(false)}><X size={20}/></button>
+              <h2 className="text-lg font-bold flex items-center gap-2"><UserPlus size={24} /> Alta de Persona</h2>
+              <button onClick={() => setIsModalOpen(false)}><X size={20} /></button>
             </div>
-            
+
             <form onSubmit={handleCreate} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-              
+
               {/* Sección Foto */}
               <div className="flex justify-center mb-4">
                 <div className="relative w-24 h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group hover:border-blue-500 transition-colors cursor-pointer">
-                   {newMember.photo ? (
-                     <img src={newMember.photo} className="w-full h-full object-cover" alt="Preview" />
-                   ) : (
-                     <div className="text-center text-gray-400">
-                       <Camera size={24} className="mx-auto mb-1"/>
-                       <span className="text-[10px] uppercase font-bold">Subir Foto</span>
-                     </div>
-                   )}
-                   <input 
-                    type="file" 
-                    accept="image/*" 
+                  {newMember.photo ? (
+                    <img src={newMember.photo} className="w-full h-full object-cover" alt="Preview" />
+                  ) : (
+                    <div className="text-center text-gray-400">
+                      <Camera size={24} className="mx-auto mb-1" />
+                      <span className="text-[10px] uppercase font-bold">Subir Foto</span>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
                     onChange={handleImageUpload}
                     className="absolute inset-0 opacity-0 cursor-pointer"
-                   />
+                  />
                 </div>
               </div>
 
@@ -158,47 +158,62 @@ const People = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold uppercase text-gray-500">Nombre *</label>
-                  <input required className="w-full border p-2 rounded focus:border-blue-500 outline-none" value={newMember.firstName} onChange={e => setNewMember({...newMember, firstName: e.target.value})} />
+                  <input required className="w-full border p-2 rounded focus:border-blue-500 outline-none" value={newMember.firstName} onChange={e => setNewMember({ ...newMember, firstName: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-xs font-bold uppercase text-gray-500">Apellido *</label>
-                  <input required className="w-full border p-2 rounded focus:border-blue-500 outline-none" value={newMember.lastName} onChange={e => setNewMember({...newMember, lastName: e.target.value})} />
+                  <input required className="w-full border p-2 rounded focus:border-blue-500 outline-none" value={newMember.lastName} onChange={e => setNewMember({ ...newMember, lastName: e.target.value })} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold uppercase text-gray-500 flex items-center gap-1"><Cake size={12}/> Cumpleaños</label>
-                  <input type="date" className="w-full border p-2 rounded focus:border-blue-500 outline-none" value={newMember.birthDate} onChange={e => setNewMember({...newMember, birthDate: e.target.value})} />
+                  <label className="text-xs font-bold uppercase text-gray-500 flex items-center gap-1"><Cake size={12} /> Cumpleaños</label>
+                  <input type="date" className="w-full border p-2 rounded focus:border-blue-500 outline-none" value={newMember.birthDate} onChange={e => setNewMember({ ...newMember, birthDate: e.target.value })} />
                 </div>
                 <div>
-                   <label className="text-xs font-bold uppercase text-gray-500 flex items-center gap-1"><MapPin size={12}/> Localidad</label>
-                   <input className="w-full border p-2 rounded focus:border-blue-500 outline-none" placeholder="Ej: Quilmes" value={newMember.city} onChange={e => setNewMember({...newMember, city: e.target.value})} />
+                  <label className="text-xs font-bold uppercase text-gray-500 flex items-center gap-1"><MapPin size={12} /> Localidad</label>
+                  <input className="w-full border p-2 rounded focus:border-blue-500 outline-none" placeholder="Ej: Quilmes" value={newMember.city} onChange={e => setNewMember({ ...newMember, city: e.target.value })} />
                 </div>
               </div>
 
               <div>
-                 <label className="text-xs font-bold uppercase text-gray-500">Dirección</label>
-                 <input className="w-full border p-2 rounded focus:border-blue-500 outline-none" placeholder="Calle 123..." value={newMember.address} onChange={e => setNewMember({...newMember, address: e.target.value})} />
+                <label className="text-xs font-bold uppercase text-gray-500">Dirección</label>
+                <input className="w-full border p-2 rounded focus:border-blue-500 outline-none" placeholder="Calle 123..." value={newMember.address} onChange={e => setNewMember({ ...newMember, address: e.target.value })} />
               </div>
-              
-              <hr className="border-dashed my-2"/>
+
+              <hr className="border-dashed my-2" />
 
               {/* Sección Usuario */}
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <p className="text-xs font-bold text-blue-800 mb-2 uppercase">Datos de Acceso (Opcional)</p>
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                <p className="text-xs font-bold text-orange-800 mb-2 uppercase flex items-center gap-2">
+                  <Lock size={12} /> Datos de Acceso (Obligatorio)
+                </p>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-bold text-gray-500 flex items-center gap-1"><Mail size={12}/> Email</label>
-                    <input type="email" className="w-full border p-2 rounded bg-white" placeholder="juan@email.com" value={newMember.email} onChange={e => setNewMember({...newMember, email: e.target.value})} />
+                    <label className="text-xs font-bold text-gray-600 flex items-center gap-1">Email *</label>
+                    <input
+                      required // <--- OBLIGATORIO
+                      type="email"
+                      className="w-full border p-2 rounded bg-white focus:ring-2 focus:ring-orange-200 outline-none"
+                      placeholder="juan@email.com"
+                      value={newMember.email}
+                      onChange={e => setNewMember({ ...newMember, email: e.target.value })}
+                    />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-gray-500 flex items-center gap-1"><Lock size={12}/> Contraseña</label>
-                    <input type="password" className="w-full border p-2 rounded bg-white" placeholder="******" value={newMember.password} onChange={e => setNewMember({...newMember, password: e.target.value})} />
+                    <label className="text-xs font-bold text-gray-600 flex items-center gap-1">Contraseña *</label>
+                    <input
+                      required // <--- OBLIGATORIO
+                      type="password"
+                      className="w-full border p-2 rounded bg-white focus:ring-2 focus:ring-orange-200 outline-none"
+                      placeholder="Mínimo 6 caracteres"
+                      value={newMember.password}
+                      onChange={e => setNewMember({ ...newMember, password: e.target.value })}
+                    />
                   </div>
                 </div>
               </div>
-
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancelar</button>
                 <button type="submit" disabled={saving} className="bg-blue-900 text-white px-6 py-2 rounded font-bold hover:bg-blue-800 shadow-md">

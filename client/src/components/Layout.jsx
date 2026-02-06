@@ -2,48 +2,48 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Users, Church, Calendar, Settings, Network, Layers, 
-  Menu, X, Scan, QrCode, LogOut, Briefcase, 
-  Gift // <--- 1. IMPORTAMOS EL ÍCONO AQUÍ
+  Menu, X, Scan, QrCode, LogOut, Briefcase, Gift, Shield // <--- SHIELD NUEVO
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
   
-  // ESTADO PARA SIMULAR EL ROL
-  const [currentRole, setCurrentRole] = useState('LIDER'); 
+  // AHORA PROBAMOS CON 'ADMIN' POR DEFECTO
+  const [currentRole, setCurrentRole] = useState('ADMIN'); 
 
   const location = useLocation();
 
-  // --- AQUÍ ES DONDE VA LA CONFIGURACIÓN DEL MENÚ ---
   const menusByRole = {
-    LIDER: [
+    // ADMIN: Ve TODO, incluyendo el panel de control "Admin"
+    ADMIN: [
       { name: 'Personas', icon: <Users size={20} />, path: '/people' },
       { name: 'Planificación', icon: <Church size={20} />, path: '/plans' },
       { name: 'Áreas', icon: <Layers size={20} />, path: '/areas' },
       { name: 'Eventos', icon: <Calendar size={20} />, path: '/events' },
-      
-      // <--- AQUI AGREGAMOS ANIVERSARIOS PARA EL LIDER
-      { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' }, 
-      
+      { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' },
       { name: 'Organigrama', icon: <Network size={20} />, path: '/organigram' },
-      { name: 'Admin', icon: <Settings size={20} />, path: '/admin' },
+      { name: 'Configuración', icon: <Settings size={20} />, path: '/admin' }, // Solo Admin ve esto
+    ],
+    // LIDER: Gestión operativa, pero NO toca la configuración global
+    LIDER: [
+      { name: 'Mi Equipo', icon: <Users size={20} />, path: '/people' }, // Puede ver directorio
+      { name: 'Mis Planes', icon: <Church size={20} />, path: '/plans' },
+      { name: 'Mis Áreas', icon: <Layers size={20} />, path: '/areas' },
+      { name: 'Eventos', icon: <Calendar size={20} />, path: '/events' },
+      { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' },
     ],
     COLABORADOR: [
       { name: 'Mi Credencial', icon: <QrCode size={20} />, path: '/credential' },
       { name: 'Mis Eventos', icon: <Calendar size={20} />, path: '/events' },
-      
-      // <--- AQUI AGREGAMOS ANIVERSARIOS PARA EL COLABORADOR
-      { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' }, 
-      
-      { name: 'Mi Equipo', icon: <Users size={20} />, path: '/organigram' },
+      { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' },
+      { name: 'Mi Equipo', icon: <Network size={20} />, path: '/organigram' },
     ],
     RECEPCION: [
       { name: 'Escanear', icon: <Scan size={20} />, path: '/reception' },
-      { name: 'Directorio', icon: <Users size={20} />, path: '/people' },
     ]
   };
 
-  const menuItems = menusByRole[currentRole];
+  const menuItems = menusByRole[currentRole] || menusByRole['COLABORADOR'];
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -55,17 +55,18 @@ const Layout = ({ children }) => {
           <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-500"><X size={24} /></button>
         </div>
 
-        {/* SELECTOR DE ROL */}
+        {/* SELECTOR DE ROL (TESTING) */}
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <label className="text-xs font-bold text-gray-400 uppercase">Vista Actual</label>
+          <label className="text-xs font-bold text-gray-400 uppercase">Simular Rol</label>
           <div className="flex items-center gap-2 mt-1">
-            <Briefcase size={16} className="text-gray-500"/>
+            <Shield size={16} className="text-gray-500"/>
             <select 
-              className="bg-transparent text-sm font-bold text-gray-700 outline-none w-full"
+              className="bg-transparent text-sm font-bold text-gray-700 outline-none w-full cursor-pointer"
               value={currentRole}
               onChange={(e) => setCurrentRole(e.target.value)}
             >
-              <option value="LIDER">Líder / Admin</option>
+              <option value="ADMIN">Administrador</option>
+              <option value="LIDER">Líder</option>
               <option value="COLABORADOR">Colaborador</option>
               <option value="RECEPCION">Recepción</option>
             </select>
@@ -100,7 +101,7 @@ const Layout = ({ children }) => {
         </div>
       </div>
 
-      {/* CONTENIDO PRINCIPAL */}
+      {/* CONTENIDO */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white shadow-sm border-b border-gray-200 h-16 flex items-center justify-between px-4 md:px-8">
           <button onClick={() => setIsOpen(true)} className="md:hidden text-gray-600 hover:bg-gray-100 p-2 rounded-lg">
@@ -109,11 +110,11 @@ const Layout = ({ children }) => {
           
           <div className="ml-auto flex items-center gap-4">
              <div className="text-right hidden md:block">
-                <p className="text-sm font-bold text-gray-800">Usuario Demo</p>
-                <p className="text-xs text-blue-500 font-bold">{currentRole}</p>
+                <p className="text-sm font-bold text-gray-800">Usuario Activo</p>
+                <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold uppercase">{currentRole}</span>
              </div>
-             <div className="w-10 h-10 rounded-full bg-blue-100 border-2 border-white shadow-sm flex items-center justify-center text-blue-600 font-bold">
-               U
+             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 border-2 border-white shadow-md flex items-center justify-center text-white font-bold">
+               {currentRole[0]}
              </div>
           </div>
         </header>
