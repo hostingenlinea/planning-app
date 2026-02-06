@@ -1,75 +1,73 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
+import Login from './pages/Login';
 
 // --- IMPORTACIONES DE PÁGINAS ---
 import People from './pages/People';
 import Plans from './pages/Plans';
 import ServiceDetail from './pages/ServiceDetail';
-import Ministries from './pages/Ministries';
+import Ministries from './pages/Ministries'; 
 import Organigram from './pages/Organigram';
 import Events from './pages/Events';
 import Admin from './pages/Admin';
+import Anniversaries from './pages/Anniversaries';
 import MyCredential from './pages/MyCredential';
 import Reception from './pages/Reception';
-import Anniversaries from './pages/Anniversaries';
+
+// --- COMPONENTE DE RUTA PROTEGIDA ---
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  // Mientras carga el contexto (leyendo localStorage), mostramos algo simple
+  if (loading) return <div className="h-screen flex items-center justify-center text-gray-500">Cargando...</div>;
+
+  // Si no hay usuario, mandamos al login
+  if (!user) return <Navigate to="/login" replace />;
+
+  // Si hay usuario, mostramos el Layout con el contenido
+  return <Layout>{children}</Layout>;
+};
 
 function App() {
   return (
-    <BrowserRouter>
-      <Layout>
+    <AuthProvider>
+      <BrowserRouter>
         <Routes>
-          {/* Redirección inicial */}
-          <Route path="/" element={<Navigate to="/people" replace />} />
-
-          {/* Módulo de Personas */}
-          <Route path="/people" element={<People />} />
-
-          {/* --- MÓDULO DE PLANIFICACIÓN --- */}
-          {/* Esta es la ruta que te faltaba conectar: */}
-          <Route path="/plans" element={<Plans />} />
           
-          {/* Ruta dinámica para ver el detalle de un culto (ej: /plans/4) */}
-          {/* Si aún no creaste ServiceDetail.jsx, comenta esta línea temporalmente */}
-          <Route path="/plans/:id" element={<ServiceDetail />} />
+          {/* RUTA PÚBLICA (LOGIN) - Sin Layout */}
+          <Route path="/login" element={<Login />} />
 
-          {/* Módulo de Areas */}
-          <Route path="/areas" element={<Ministries />} />
-
-          {/* Módulo Organigrama */}
-          <Route path="/organigram" element={<Organigram />} />
-
-          {/* Módulo Eventos */}
-          <Route path="/events" element={<Events />} />
-
-          <Route path="/giving" element={
-            <div className="p-8 text-gray-500">
-              <h2 className="text-2xl font-bold mb-2">Donaciones</h2>
-              <p>Este módulo está en construcción.</p>
-            </div>
-          } />
-
-          {/*Módulo Aniversarios*/}
-          <Route path="/anniversaries" element={<Anniversaries />} />
-
-          {/* Módulo Administrador */}
-          <Route path="/admin" element={<Admin />} />
-
-          {/* Vista Colaborador */}
-          <Route path="/credential" element={<MyCredential />} />
-
-          {/* Vista Recepción */}
-          <Route path="/reception" element={<Reception />} />
-
-          {/* Ruta de Error 404 */}
-          <Route path="*" element={
-            <div className="p-8 text-red-500 font-bold">
-              Página no encontrada.
-            </div>
+          {/* RUTAS PROTEGIDAS (Todas dentro del Layout) */}
+          <Route path="/*" element={
+            <ProtectedRoute>
+              <Routes>
+                {/* Redirección inicial: Si entran a "/", van a eventos */}
+                <Route path="/" element={<Navigate to="/events" replace />} />
+                
+                {/* Módulos */}
+                <Route path="/people" element={<People />} />
+                <Route path="/plans" element={<Plans />} />
+                <Route path="/plans/:id" element={<ServiceDetail />} />
+                <Route path="/areas" element={<Ministries />} />
+                <Route path="/organigram" element={<Organigram />} />
+                <Route path="/events" element={<Events />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/anniversaries" element={<Anniversaries />} />
+                
+                {/* Módulos Específicos de Rol */}
+                <Route path="/credential" element={<MyCredential />} />
+                <Route path="/reception" element={<Reception />} />
+                
+                {/* Ruta 404 dentro del sistema */}
+                <Route path="*" element={<div className="p-10 text-center text-gray-400">Página no encontrada</div>} />
+              </Routes>
+            </ProtectedRoute>
           } />
 
         </Routes>
-      </Layout>
-    </BrowserRouter>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

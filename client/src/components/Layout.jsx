@@ -1,20 +1,26 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // <--- IMPORTANTE
 import { 
   Users, Church, Calendar, Settings, Network, Layers, 
-  Menu, X, Scan, QrCode, LogOut, Briefcase, Gift, Shield 
+  Menu, X, Scan, QrCode, LogOut, Gift 
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
-  
-  // ROL POR DEFECTO PARA PRUEBAS (Luego vendrá del login)
-  const [currentRole, setCurrentRole] = useState('ADMIN'); 
-
+  const { user, logout } = useAuth(); // <--- Usamos el usuario real
   const location = useLocation();
 
+  // Mapeo: Rol de DB -> Clave de Menú
+  // "Pastor" y "Admin" ven todo. "Lider" ve intermedio. "Colaborador" ve básico.
+  let roleKey = 'COLABORADOR';
+  const role = user?.role || '';
+  
+  if (role === 'Admin' || role === 'Pastor') roleKey = 'ADMIN';
+  else if (role === 'Lider') roleKey = 'LIDER';
+  else if (role === 'Recepción') roleKey = 'RECEPCION';
+
   const menusByRole = {
-    // ADMIN: Ve todo + Configuración
     ADMIN: [
       { name: 'Personas', icon: <Users size={20} />, path: '/people' },
       { name: 'Planificación', icon: <Church size={20} />, path: '/plans' },
@@ -24,7 +30,6 @@ const Layout = ({ children }) => {
       { name: 'Organigrama', icon: <Network size={20} />, path: '/organigram' },
       { name: 'Configuración', icon: <Settings size={20} />, path: '/admin' },
     ],
-    // LIDER: Operativo (sin config global)
     LIDER: [
       { name: 'Mi Equipo', icon: <Users size={20} />, path: '/people' },
       { name: 'Mis Planes', icon: <Church size={20} />, path: '/plans' },
@@ -32,22 +37,19 @@ const Layout = ({ children }) => {
       { name: 'Eventos', icon: <Calendar size={20} />, path: '/events' },
       { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' },
     ],
-    // COLABORADOR: Vista personal
     COLABORADOR: [
       { name: 'Mi Credencial', icon: <QrCode size={20} />, path: '/credential' },
       { name: 'Mis Eventos', icon: <Calendar size={20} />, path: '/events' },
       { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' },
       { name: 'Mi Equipo', icon: <Network size={20} />, path: '/organigram' },
     ],
-    // RECEPCION: Escaneo + Consulta
     RECEPCION: [
       { name: 'Escanear', icon: <Scan size={20} />, path: '/reception' },
-      { name: 'Directorio', icon: <Users size={20} />, path: '/people' }, // <--- AGREGADO OTRA VEZ
+      { name: 'Directorio', icon: <Users size={20} />, path: '/people' },
     ]
   };
 
-  // Seleccionamos el menú según el rol (fallback a Colaborador si falla)
-  const menuItems = menusByRole[currentRole] || menusByRole['COLABORADOR'];
+  const menuItems = menusByRole[roleKey] || menusByRole['COLABORADOR'];
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -59,22 +61,13 @@ const Layout = ({ children }) => {
           <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-500"><X size={24} /></button>
         </div>
 
-        {/* SELECTOR DE ROL (SOLO TEST) */}
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <label className="text-xs font-bold text-gray-400 uppercase">Simular Rol</label>
-          <div className="flex items-center gap-2 mt-1">
-            <Shield size={16} className="text-gray-500"/>
-            <select 
-              className="bg-transparent text-sm font-bold text-gray-700 outline-none w-full cursor-pointer"
-              value={currentRole}
-              onChange={(e) => setCurrentRole(e.target.value)}
-            >
-              <option value="ADMIN">Administrador</option>
-              <option value="LIDER">Líder</option>
-              <option value="COLABORADOR">Colaborador</option>
-              <option value="RECEPCION">Recepción</option>
-            </select>
-          </div>
+        {/* INFO USUARIO */}
+        <div className="px-6 py-6 bg-blue-50 border-b border-blue-100">
+          <p className="text-xs font-bold text-blue-400 uppercase mb-1">Hola,</p>
+          <h3 className="font-bold text-blue-900 truncate">{user?.name || 'Usuario'}</h3>
+          <span className="inline-block mt-1 text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold uppercase">
+            {user?.role}
+          </span>
         </div>
 
         <nav className="p-4 space-y-1 mt-2">
@@ -99,7 +92,10 @@ const Layout = ({ children }) => {
         </nav>
 
         <div className="absolute bottom-0 w-full p-4 border-t border-gray-100">
-          <button className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-red-500 w-full text-sm font-medium transition-colors">
+          <button 
+            onClick={logout} 
+            className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-red-500 w-full text-sm font-medium transition-colors"
+          >
             <LogOut size={20} /> Cerrar Sesión
           </button>
         </div>
@@ -113,12 +109,12 @@ const Layout = ({ children }) => {
           </button>
           
           <div className="ml-auto flex items-center gap-4">
-             <div className="text-right hidden md:block">
-                <p className="text-sm font-bold text-gray-800">Usuario Activo</p>
-                <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold uppercase">{currentRole}</span>
-             </div>
-             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 border-2 border-white shadow-md flex items-center justify-center text-white font-bold">
-               {currentRole[0]}
+             <div className="w-10 h-10 rounded-full bg-gray-100 border-2 border-white shadow-md flex items-center justify-center overflow-hidden">
+               {user?.photo ? (
+                 <img src={user.photo} alt="Avatar" className="w-full h-full object-cover"/>
+               ) : (
+                 <span className="text-blue-600 font-bold">{user?.firstName?.[0] || 'U'}</span>
+               )}
              </div>
           </div>
         </header>
