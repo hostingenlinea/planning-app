@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
+const initBirthdayCron = require('./cron/birthday.cron'); // <--- IMPORTAR CRON
 
 // --- IMPORTACIÓN DE RUTAS ---
 const memberRoutes = require('./routes/members.routes');
@@ -9,7 +10,7 @@ const serviceRoutes = require('./routes/services.routes');
 const ministryRoutes = require('./routes/ministries.routes');
 const adminRoutes = require('./routes/admin.routes');
 const attendanceRoutes = require('./routes/attendance.routes');
-const authRoutes = require('./routes/auth.routes'); // <--- 1. AGREGADO AQUÍ
+const authRoutes = require('./routes/auth.routes');
 
 // Inicializar
 const app = express();
@@ -34,7 +35,7 @@ app.use(cors({
   credentials: true
 }));
 
-// --- CONFIGURACIÓN BODY PARSER (10MB PARA FOTOS) ---
+// --- CONFIGURACIÓN BODY PARSER (10MB) ---
 app.use(express.json({ limit: '10mb' })); 
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -49,9 +50,12 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/ministries', ministryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/attendance', attendanceRoutes);
-app.use('/api/auth', authRoutes); // <--- 2. CONECTADO AQUÍ
+app.use('/api/auth', authRoutes);
 
-// --- INICIO ---
+// --- INICIAR CRON JOB DE CUMPLEAÑOS ---
+initBirthdayCron(); // <--- ACTIVAR AQUÍ
+
+// --- INICIO SERVIDOR ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en puerto ${PORT}`);

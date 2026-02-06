@@ -1,20 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Users, Search, Plus, Phone, MapPin, Trash2, UserPlus, X, Mail, Cake, Lock, Camera, Upload } from 'lucide-react';
+import { 
+  Plus, Search, MapPin, Phone, User, X, Camera, 
+  Trash2, Edit, Loader, Mail 
+} from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 const People = () => {
+  const { user } = useAuth();
   const [members, setMembers] = useState([]);
+  const [filteredMembers, setFilteredMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-  const [newMember, setNewMember] = useState({
+  const [formData, setFormData] = useState({
     firstName: '', lastName: '', phone: '', email: '',
-    address: '', city: '', birthDate: '', photo: '', password: ''
+    address: '', city: '', birthDate: '', photo: '', 
+    churchRole: 'Colaborador', password: '' 
   });
+
+  const isAdmin = user?.role === 'Admin' || user?.role === 'Pastor';
 
   useEffect(() => { fetchMembers(); }, []);
 
@@ -22,210 +33,175 @@ const People = () => {
     try {
       const res = await axios.get(`${API_URL}/api/members`);
       setMembers(res.data);
-    } catch (error) { } finally { setLoading(false); }
+      setFilteredMembers(res.data);
+    } catch (error) { console.error(error); } 
+    finally { setLoading(false); }
   };
 
-  // --- LÓGICA DE FOTO AUTOMÁTICA (4x4) ---
+  const handleSearch = (e) => {
+    const term = e.target.value.toLowerCase();
+    setSearchTerm(term);
+    setFilteredMembers(members.filter(m => 
+      m.firstName.toLowerCase().includes(term) || m.lastName.toLowerCase().includes(term)
+    ));
+  };
+
+  const openCreateModal = () => {
+    setEditingId(null);
+    setFormData({ firstName: '', lastName: '', phone: '', email: '', address: '', city: '', birthDate: '', photo: '', churchRole: 'Colaborador', password: '' });
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (member) => {
+    setEditingId(member.id);
+    setFormData({
+      firstName: member.firstName,
+      lastName: member.lastName,
+      phone: member.phone || '',
+      email: member.email || '',
+      address: member.address || '',
+      city: member.city || '',
+      birthDate: member.birthDate ? member.birthDate.split('T')[0] : '',
+      photo: member.photo || '',
+      churchRole: member.churchRole || 'Colaborador',
+      password: '' // Pass vacía en edición
+    });
+    setIsModalOpen(true);
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
-        // Crear un canvas cuadrado (400x400 px para que no pese mucho)
         const canvas = document.createElement('canvas');
-        const size = 400;
-        canvas.width = size;
-        canvas.height = size;
+        canvas.width = 400; canvas.height = 400;
         const ctx = canvas.getContext('2d');
-
-        // Calcular recorte para que quede centrada (object-fit: cover)
-        let sWidth, sHeight, sx, sy;
-        if (img.width > img.height) {
-          sHeight = img.height;
-          sWidth = img.height;
-          sx = (img.width - img.height) / 2;
-          sy = 0;
-        } else {
-          sWidth = img.width;
-          sHeight = img.width;
-          sx = 0;
-          sy = (img.height - img.width) / 2;
-        }
-
-        // Dibujar en el canvas redimensionado
-        ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, size, size);
-
-        // Convertir a texto Base64
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8); // 80% calidad
-        setNewMember({ ...newMember, photo: dataUrl });
+        // Simple center crop logic
+        let sWidth = img.width > img.height ? img.height : img.width;
+        let sHeight = sWidth;
+        let sx = (img.width - sWidth) / 2;
+        let sy = (img.height - sHeight) / 2;
+        ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, 400, 400);
+        setFormData({ ...formData, photo: canvas.toDataURL('image/jpeg', 0.8) });
       };
-      img.src = event.target.result;
+      img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
   };
 
-  const handleCreate = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.post(`${API_URL}/api/members`, newMember);
+      if (editingId) {
+        await axios.put(`${API_URL}/api/members/${editingId}`, formData);
+        alert('Datos actualizados.');
+      } else {
+        await axios.post(`${API_URL}/api/members`, formData);
+        alert('Persona creada y email enviado.');
+      }
       setIsModalOpen(false);
-      // Limpiar formulario
-      setNewMember({ firstName: '', lastName: '', phone: '', email: '', address: '', city: '', birthDate: '', photo: '', password: '' });
       fetchMembers();
-      alert('¡Persona creada con éxito!'); // Feedback positivo
     } catch (error) {
-      console.error(error);
-      // AQUI ESTA LA CLAVE: Mostrar el mensaje real del servidor
-      const serverMessage = error.response?.data?.error;
-      alert(serverMessage || 'Error desconocido al conectar con el servidor.');
-    } finally {
-      setSaving(false);
-    }
+      alert(error.response?.data?.error || 'Error al guardar.');
+    } finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar persona?')) return;
-    try { await axios.delete(`${API_URL}/api/members/${id}`); fetchMembers(); } catch (error) { }
+    if (!confirm('¿Eliminar persona y su usuario de acceso?')) return;
+    try {
+      await axios.delete(`${API_URL}/api/members/${id}`);
+      fetchMembers();
+    } catch (error) { alert('Error al eliminar'); }
   };
 
-  const filtered = members.filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()));
-
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2"><Users size={28} /> Directorio</h1>
-        <div className="flex gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-            <input className="w-full pl-10 pr-4 py-2 border rounded-lg" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-          </div>
-          <button onClick={() => setIsModalOpen(true)} className="bg-blue-900 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2">
-            <Plus size={20} /> <span className="hidden md:inline">Nuevo</span>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-extrabold text-gray-800">Directorio</h1>
+        {isAdmin && (
+          <button onClick={openCreateModal} className="bg-blue-900 text-white px-5 py-3 rounded-xl hover:bg-blue-800 shadow-lg flex items-center gap-2 font-bold">
+            <Plus size={20} /> Nuevo
           </button>
-        </div>
+        )}
       </div>
 
-      {/* LISTA DE PERSONAS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((m) => (
-          <div key={m.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex gap-4 items-center">
-            <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 border border-gray-200 shadow-sm">
-              {m.photo ? (
-                <img src={m.photo} className="w-full h-full object-cover" alt="Avatar" />
-              ) : (
-                <span className="font-bold text-gray-400 text-lg">{m.firstName[0]}</span>
+      <div className="relative mb-8">
+        <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
+        <input type="text" placeholder="Buscar..." className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 outline-none" value={searchTerm} onChange={handleSearch} />
+      </div>
+
+      {loading ? <div className="text-center py-10">Cargando...</div> : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredMembers.map(member => (
+            <div key={member.id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative group">
+              {isAdmin && (
+                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => openEditModal(member)} className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100"><Edit size={16} /></button>
+                  <button onClick={() => handleDelete(member.id)} className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100"><Trash2 size={16} /></button>
+                </div>
               )}
+              <div className="flex items-center gap-5">
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm shrink-0">
+                  {member.photo ? <img src={member.photo} className="w-full h-full object-cover"/> : <span className="text-xl font-bold text-gray-400">{member.firstName[0]}</span>}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800 truncate">{member.firstName} {member.lastName}</h3>
+                  <span className="text-xs font-bold uppercase text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{member.churchRole}</span>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2 text-sm text-gray-600">
+                {member.phone && <div className="flex gap-2"><Phone size={14}/> {member.phone}</div>}
+                {member.email && <div className="flex gap-2 truncate"><Mail size={14}/> {member.email}</div>}
+              </div>
             </div>
-            <div className="flex-1 overflow-hidden text-sm space-y-0.5">
-              <h3 className="font-bold text-gray-800 text-base">{m.firstName} {m.lastName}</h3>
-              <p className="text-blue-600 text-[10px] font-bold uppercase tracking-wider">{m.churchRole}</p>
-              {m.phone && <div className="flex gap-2 text-gray-500 text-xs"><Phone size={10} /> {m.phone}</div>}
-              {m.city && <div className="flex gap-2 text-gray-500 text-xs"><MapPin size={10} /> {m.city}</div>}
-            </div>
-            <button onClick={() => handleDelete(m.id)} className="text-gray-300 hover:text-red-500 p-2"><Trash2 size={16} /></button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* MODAL ALTA */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden my-8 animate-fade-in">
-            <div className="bg-blue-900 px-6 py-4 flex justify-between items-center text-white">
-              <h2 className="text-lg font-bold flex items-center gap-2"><UserPlus size={24} /> Alta de Persona</h2>
-              <button onClick={() => setIsModalOpen(false)}><X size={20} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
+              <h2 className="text-xl font-bold">{editingId ? 'Editar Persona' : 'Nueva Persona'}</h2>
+              <button onClick={() => setIsModalOpen(false)}><X className="text-gray-400" /></button>
             </div>
-
-            <form onSubmit={handleCreate} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-
-              {/* Sección Foto */}
-              <div className="flex justify-center mb-4">
-                <div className="relative w-24 h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group hover:border-blue-500 transition-colors cursor-pointer">
-                  {newMember.photo ? (
-                    <img src={newMember.photo} className="w-full h-full object-cover" alt="Preview" />
-                  ) : (
-                    <div className="text-center text-gray-400">
-                      <Camera size={24} className="mx-auto mb-1" />
-                      <span className="text-[10px] uppercase font-bold">Subir Foto</span>
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  />
+            <form onSubmit={handleSave} className="p-6 space-y-6">
+              <div className="flex justify-center">
+                <div className="relative w-32 h-32 rounded-full bg-gray-100 border-4 shadow-lg overflow-hidden group">
+                   {formData.photo ? <img src={formData.photo} className="w-full h-full object-cover" /> : <User size={48} className="text-gray-300 m-auto mt-8"/>}
+                   <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                 </div>
               </div>
-
-              {/* Sección Datos */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold uppercase text-gray-500">Nombre *</label>
-                  <input required className="w-full border p-2 rounded focus:border-blue-500 outline-none" value={newMember.firstName} onChange={e => setNewMember({ ...newMember, firstName: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold uppercase text-gray-500">Apellido *</label>
-                  <input required className="w-full border p-2 rounded focus:border-blue-500 outline-none" value={newMember.lastName} onChange={e => setNewMember({ ...newMember, lastName: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold uppercase text-gray-500 flex items-center gap-1"><Cake size={12} /> Cumpleaños</label>
-                  <input type="date" className="w-full border p-2 rounded focus:border-blue-500 outline-none" value={newMember.birthDate} onChange={e => setNewMember({ ...newMember, birthDate: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold uppercase text-gray-500 flex items-center gap-1"><MapPin size={12} /> Localidad</label>
-                  <input className="w-full border p-2 rounded focus:border-blue-500 outline-none" placeholder="Ej: Quilmes" value={newMember.city} onChange={e => setNewMember({ ...newMember, city: e.target.value })} />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold uppercase text-gray-500">Dirección</label>
-                <input className="w-full border p-2 rounded focus:border-blue-500 outline-none" placeholder="Calle 123..." value={newMember.address} onChange={e => setNewMember({ ...newMember, address: e.target.value })} />
-              </div>
-
-              <hr className="border-dashed my-2" />
-
-              {/* Sección Usuario */}
-              <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
-                <p className="text-xs font-bold text-orange-800 mb-2 uppercase flex items-center gap-2">
-                  <Lock size={12} /> Datos de Acceso (Obligatorio)
-                </p>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-gray-600 flex items-center gap-1">Email *</label>
-                    <input
-                      required // <--- OBLIGATORIO
-                      type="email"
-                      className="w-full border p-2 rounded bg-white focus:ring-2 focus:ring-orange-200 outline-none"
-                      placeholder="juan@email.com"
-                      value={newMember.email}
-                      onChange={e => setNewMember({ ...newMember, email: e.target.value })}
-                    />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input required placeholder="Nombre" className="border p-3 rounded-xl" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
+                <input required placeholder="Apellido" className="border p-3 rounded-xl" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
+                <input required type="email" placeholder="Email" className="border p-3 rounded-xl md:col-span-2" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                
+                {!editingId && (
+                  <div className="md:col-span-2">
+                    <input required type="text" placeholder="Contraseña Inicial" className="w-full border p-3 rounded-xl" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                    <p className="text-xs text-gray-400 mt-1">Se enviará por email al usuario.</p>
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-600 flex items-center gap-1">Contraseña *</label>
-                    <input
-                      required // <--- OBLIGATORIO
-                      type="password"
-                      className="w-full border p-2 rounded bg-white focus:ring-2 focus:ring-orange-200 outline-none"
-                      placeholder="Mínimo 6 caracteres"
-                      value={newMember.password}
-                      onChange={e => setNewMember({ ...newMember, password: e.target.value })}
-                    />
-                  </div>
-                </div>
+                )}
+                
+                <input type="text" placeholder="Teléfono" className="border p-3 rounded-xl" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                <input type="date" className="border p-3 rounded-xl" value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} />
+                
+                <select className="border p-3 rounded-xl" value={formData.churchRole} onChange={e => setFormData({...formData, churchRole: e.target.value})}>
+                  <option>Colaborador</option><option>Lider</option><option>Pastor</option><option>Recepción</option>
+                </select>
+                
+                <input type="text" placeholder="Ciudad" className="border p-3 rounded-xl" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />
+                <input type="text" placeholder="Dirección" className="border p-3 rounded-xl md:col-span-2" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
               </div>
               <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancelar</button>
-                <button type="submit" disabled={saving} className="bg-blue-900 text-white px-6 py-2 rounded font-bold hover:bg-blue-800 shadow-md">
-                  {saving ? 'Guardando...' : 'Crear Persona'}
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-500">Cancelar</button>
+                <button type="submit" disabled={saving} className="px-6 py-2 bg-blue-900 text-white rounded-xl font-bold flex items-center gap-2">
+                  {saving && <Loader className="animate-spin" size={16}/>} {editingId ? 'Guardar' : 'Crear'}
                 </button>
               </div>
             </form>
@@ -235,5 +211,4 @@ const People = () => {
     </div>
   );
 };
-
 export default People;

@@ -1,20 +1,36 @@
 const nodemailer = require('nodemailer');
 
-// Configuración del transporte (usando Gmail como ejemplo)
-// NOTA: Si usas Gmail, debes crear una "Contraseña de Aplicación" en tu cuenta de Google.
-const transporter = nodemailer.createTransport({
-  service: 'gmail', 
-  auth: {
-    user: process.env.EMAIL_USER, // Tu email (ej: mdsq.app@gmail.com)
-    pass: process.env.EMAIL_PASS  // Tu contraseña de aplicación
-  }
-});
+// Detectar si usamos configuración manual (Host) o Gmail
+const transportConfig = process.env.SMTP_HOST 
+  ? {
+      // CONFIGURACIÓN GENÉRICA (cPanel, Hosting, etc)
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT || 465, // 465 (SSL) o 587 (TLS)
+      secure: process.env.SMTP_PORT == 465, // True si es 465
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    }
+  : {
+      // CONFIGURACIÓN GMAIL (Por defecto si no hay Host)
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    };
 
-// Función para enviar credenciales de bienvenida
+const transporter = nodemailer.createTransport(transportConfig);
+
+// ... (El resto de las funciones sendWelcomeEmail y sendBirthdayEmail quedan IGUAL) ...
+// Copia aquí las funciones de abajo del archivo anterior
+// ...
+
 const sendWelcomeEmail = async (email, name, password) => {
   try {
     await transporter.sendMail({
-      from: '"MDSQ App" <no-reply@mdsq.app>',
+      from: `"MDSQ App" <${process.env.EMAIL_USER}>`, // <--- Cambiado para usar tu remitente real
       to: email,
       subject: 'Bienvenido al equipo MDSQ 🚀',
       html: `
@@ -40,11 +56,10 @@ const sendWelcomeEmail = async (email, name, password) => {
   }
 };
 
-// Función para enviar saludo de cumpleaños
 const sendBirthdayEmail = async (email, name) => {
   try {
     await transporter.sendMail({
-      from: '"Familia MDSQ" <no-reply@mdsq.app>',
+      from: `"Familia MDSQ" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: '¡Feliz Cumpleaños! 🎂',
       html: `
