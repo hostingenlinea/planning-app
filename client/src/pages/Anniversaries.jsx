@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Cake, Gift, MapPin } from 'lucide-react';
+import { Cake, Gift } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -10,7 +10,10 @@ const Anniversaries = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const currentMonth = new Date().getMonth();
+  // Usamos el mes actual real
+  const currentMonth = new Date().getMonth(); 
+  const currentYear = new Date().getFullYear(); // <--- Año actual para calcular edad
+  
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
   useEffect(() => {
@@ -20,16 +23,20 @@ const Anniversaries = () => {
   const fetchData = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/members`);
+      
       const birthdays = res.data.filter(m => {
         if (!m.birthDate) return false;
         
-        const isThisMonth = new Date(m.birthDate).getMonth() === currentMonth;
-        // FILTRO: Excluir al usuario logueado
+        // CORRECCIÓN 1: Usar getUTCMonth para evitar el cambio de zona horaria
+        const birthDate = new Date(m.birthDate);
+        const isThisMonth = birthDate.getUTCMonth() === currentMonth;
+        
         const isNotMe = user ? m.id !== user.memberId : true; 
 
         return isThisMonth && isNotMe;
       }).sort((a, b) => {
-        return new Date(a.birthDate).getDate() - new Date(b.birthDate).getDate();
+        // CORRECCIÓN 2: Ordenar usando getUTCDate
+        return new Date(a.birthDate).getUTCDate() - new Date(b.birthDate).getUTCDate();
       });
 
       setMembers(birthdays);
@@ -37,13 +44,12 @@ const Anniversaries = () => {
     finally { setLoading(false); }
   };
 
-  const getAge = (dateString) => {
-    const today = new Date();
+  // CORRECCIÓN 3: Función de Edad Simplificada (Edad que va a cumplir este año)
+  const getTurningAge = (dateString) => {
     const birthDate = new Date(dateString);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-    return age;
+    // Simplemente restamos Año Actual - Año Nacimiento (UTC)
+    // Esto muestra "51" si naciste en 1975 y estamos en 2026, sin importar si ya pasó el día o no.
+    return currentYear - birthDate.getUTCFullYear();
   };
 
   return (
@@ -65,8 +71,13 @@ const Anniversaries = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {members.map(member => {
-             const day = new Date(member.birthDate).getDate();
-             const isToday = day === new Date().getDate();
+             // CORRECCIÓN 4: Usar getUTCDate() y getUTCMonth() para mostrar el día
+             const birthDate = new Date(member.birthDate);
+             const day = birthDate.getUTCDate(); // <--- ESTO ARREGLA EL DÍA 27 vs 28
+             
+             // Para saber si es HOY, comparamos con la fecha local del navegador
+             const today = new Date();
+             const isToday = (day === today.getDate()) && (birthDate.getUTCMonth() === today.getMonth());
 
              return (
                <div key={member.id} className={`relative bg-white p-6 rounded-2xl shadow-sm border-2 overflow-hidden hover:shadow-lg transition-shadow group ${isToday ? 'border-pink-400 ring-4 ring-pink-50' : 'border-gray-100'}`}>
@@ -81,13 +92,15 @@ const Anniversaries = () => {
                      <h3 className="text-xl font-bold text-gray-800">{member.firstName} {member.lastName}</h3>
                      <p className="text-sm text-blue-600 font-bold uppercase tracking-wide">{member.churchRole}</p>
                      <div className="flex items-center gap-2 mt-2 text-gray-500 text-sm">
-                       <Gift size={14} className="text-pink-400"/> <span>Cumple {getAge(member.birthDate)} años</span>
+                       {/* Usamos la nueva función getTurningAge */}
+                       <Gift size={14} className="text-pink-400"/> <span>Cumple {getTurningAge(member.birthDate)} años</span>
                      </div>
                    </div>
                  </div>
                  <div className="mt-6 flex items-center justify-between bg-gray-50 p-3 rounded-xl">
                    <div className="flex flex-col items-center px-4 border-r border-gray-200">
                       <span className="text-xs text-gray-400 uppercase font-bold">Día</span>
+                      {/* Mostramos la variable 'day' que ahora usa UTC */}
                       <span className="text-2xl font-bold text-gray-800">{day}</span>
                    </div>
                    <div className="flex-1 text-center text-sm text-gray-600 italic">"¡Bendiciones!"</div>
