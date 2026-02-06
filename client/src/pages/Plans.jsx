@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // <--- Agregamos useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Plus, Calendar, Clock, ChevronRight, Loader } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -8,12 +8,12 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const Plans = () => {
   const { user } = useAuth();
-  const navigate = useNavigate(); // <--- Hook para redirigir
+  const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false); // <--- Estado para el botón de crear
+  const [creating, setCreating] = useState(false);
 
-  // --- PERMISO DE CREAR: SOLO ADMIN, PASTOR, PRODUCTOR ---
+  // PERMISO DE CREAR: SOLO ADMIN, PASTOR, PRODUCTOR
   const canCreate = ['Admin', 'Pastor', 'Productor'].includes(user?.role || '');
 
   useEffect(() => {
@@ -28,20 +28,16 @@ const Plans = () => {
     finally { setLoading(false); }
   };
 
-  // --- FUNCIÓN QUE FALTABA: CREAR NUEVO PLAN ---
   const handleCreate = async () => {
     if (!confirm('¿Crear un nuevo plan de reunión?')) return;
     setCreating(true);
     try {
-      // Creamos un servicio con fecha de hoy por defecto
       const today = new Date();
       const res = await axios.post(`${API_URL}/api/services`, {
         name: 'Reunión General',
         date: today.toISOString(),
         leader: user.name
       });
-      
-      // Redirigimos al detalle para editarlo
       navigate(`/plans/${res.data.id}`);
     } catch (error) {
       console.error(error);
@@ -58,7 +54,7 @@ const Plans = () => {
            <p className="text-gray-500 mt-1">Reuniones y liturgias</p>
         </div>
         
-        {/* BOTÓN "NUEVO PLAN" AHORA SÍ FUNCIONA */}
+        {/* Solo los autorizados ven el botón de crear */}
         {canCreate && (
           <button 
             onClick={handleCreate} 
@@ -76,26 +72,15 @@ const Plans = () => {
           {services.map(service => (
             <Link to={`/plans/${service.id}`} key={service.id} className="block group">
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:border-blue-200 transition-all duration-300 relative overflow-hidden">
-                 
                  <div className="absolute top-0 right-0 bg-blue-50 w-24 h-24 rounded-bl-full -mr-10 -mt-10 opacity-50 group-hover:scale-110 transition-transform"></div>
-
                  <div className="relative z-10">
                    <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-blue-700 transition-colors">{service.name}</h3>
                    <div className="flex flex-col gap-2 text-sm text-gray-500 mt-4">
-                     <div className="flex items-center gap-2">
-                       <Calendar size={16} className="text-blue-400"/>
-                       {new Date(service.date).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                     </div>
-                     <div className="flex items-center gap-2">
-                       <Clock size={16} className="text-blue-400"/>
-                       {new Date(service.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
-                     </div>
+                     <div className="flex items-center gap-2"><Calendar size={16} className="text-blue-400"/> {new Date(service.date).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+                     <div className="flex items-center gap-2"><Clock size={16} className="text-blue-400"/> {new Date(service.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs</div>
                    </div>
                  </div>
-
-                 <div className="absolute bottom-6 right-6 text-gray-300 group-hover:text-blue-500 transition-colors">
-                   <ChevronRight size={24} />
-                 </div>
+                 <div className="absolute bottom-6 right-6 text-gray-300 group-hover:text-blue-500 transition-colors"><ChevronRight size={24} /></div>
               </div>
             </Link>
           ))}

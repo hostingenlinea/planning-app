@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import confetti from 'canvas-confetti';
 import { 
   Users, Church, Calendar, Settings, Network, Layers, 
-  Menu, X, Scan, QrCode, LogOut, Gift, UserCog 
+  Menu, X, Scan, QrCode, LogOut, Gift, UserCog, MonitorPlay 
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -17,11 +17,9 @@ const Layout = ({ children }) => {
     if (user?.member?.birthDate) {
       const today = new Date();
       const birth = new Date(user.member.birthDate);
-      // Lógica simple de cumpleaños para el día local
       const tM = today.getMonth(); const tD = today.getDate();
       const bM = birth.getMonth(); const bD = birth.getDate();
       
-      // Ajuste básico: si coincide mes y día
       if (tM === bM && tD === bD) {
          if (!sessionStorage.getItem('birthdayGreeted')) {
            setShowBirthdayModal(true);
@@ -47,7 +45,7 @@ const Layout = ({ children }) => {
   const role = user?.role || '';
   
   if (role === 'Admin' || role === 'Pastor') roleKey = 'ADMIN';
-  else if (role === 'Productor') roleKey = 'PRODUCTOR'; // <--- AGREGADO
+  else if (role === 'Productor') roleKey = 'PRODUCTOR';
   else if (role === 'Lider') roleKey = 'LIDER';
   else if (role === 'Recepción') roleKey = 'RECEPCION';
 
@@ -61,21 +59,22 @@ const Layout = ({ children }) => {
       { name: 'Organigrama', icon: <Network size={20} />, path: '/organigram' },
       { name: 'Configuración', icon: <Settings size={20} />, path: '/admin' },
     ],
-    PRODUCTOR: [ // Menú especial para Productor
-      { name: 'Planificación', icon: <Church size={20} />, path: '/plans' }, // Acceso prioritario
+    PRODUCTOR: [
+      { name: 'Planificación', icon: <Church size={20} />, path: '/plans' },
       { name: 'Eventos', icon: <Calendar size={20} />, path: '/events' },
       { name: 'Directorio', icon: <Users size={20} />, path: '/people' },
       { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' },
     ],
     LIDER: [
       { name: 'Mi Equipo', icon: <Users size={20} />, path: '/people' },
-      { name: 'Mis Planes', icon: <Church size={20} />, path: '/plans' },
+      { name: 'Planificación', icon: <Church size={20} />, path: '/plans' }, // Acceso a ver
       { name: 'Mis Áreas', icon: <Layers size={20} />, path: '/areas' },
       { name: 'Eventos', icon: <Calendar size={20} />, path: '/events' },
       { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' },
     ],
     COLABORADOR: [
       { name: 'Mi Credencial', icon: <QrCode size={20} />, path: '/credential' },
+      { name: 'Planificación', icon: <Church size={20} />, path: '/plans' }, // <--- AGREGADO PARA QUE PUEDAN VER
       { name: 'Mis Eventos', icon: <Calendar size={20} />, path: '/events' },
       { name: 'Aniversarios', icon: <Gift size={20} />, path: '/anniversaries' },
       { name: 'Mi Equipo', icon: <Network size={20} />, path: '/organigram' },
@@ -83,6 +82,7 @@ const Layout = ({ children }) => {
     RECEPCION: [
       { name: 'Escanear', icon: <Scan size={20} />, path: '/reception' },
       { name: 'Directorio', icon: <Users size={20} />, path: '/people' },
+      { name: 'Planificación', icon: <Church size={20} />, path: '/plans' }, // <--- AGREGADO (Opcional)
     ]
   };
   const menuItems = menusByRole[roleKey] || menusByRole['COLABORADOR'];
