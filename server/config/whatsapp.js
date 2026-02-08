@@ -2,7 +2,7 @@ const axios = require('axios');
 
 // AJUSTE 1: URL Base Correcta según tu documentación (v2)
 // Si esta falla, prueba con 'https://waba-v2.360messenger.com' o quita el '/v2' de aquí y ponlo abajo.
-const WA_API_URL = process.env.WA_API_BASE; 
+const WA_API_URL = process.env.WA_API_URL; 
 const WA_TOKEN = process.env.WA_API_KEY;
 
 const sendWhatsAppMessage = async (phone, text) => {
