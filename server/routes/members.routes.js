@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { sendWelcomeEmail } = require('../config/mailer');
+const { sendWelcomeWhatsApp } = require('../config/whatsapp'); // <--- IMPORTAR
 
 // 1. LISTAR
 router.get('/', async (req, res) => {
@@ -18,7 +19,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 2. CREAR (POST) + EMAIL
+// 2. CREAR (POST)
 router.post('/', async (req, res) => {
   const { 
     firstName, lastName, phone, address, 
@@ -27,7 +28,7 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   if (!firstName || !lastName || !email || !password) {
-    return res.status(400).json({ error: 'Faltan datos obligatorios (Nombre, Email, Pass).' });
+    return res.status(400).json({ error: 'Faltan datos obligatorios.' });
   }
 
   try {
@@ -57,8 +58,16 @@ router.post('/', async (req, res) => {
       return { newUser, newMember };
     });
 
-    // Enviar Email (Async)
-    sendWelcomeEmail(email, firstName, password).catch(console.error);
+    // --- NOTIFICACIONES ---
+    console.log(`🔔 Notificando a ${firstName}...`);
+
+    // 1. Email
+    sendWelcomeEmail(email, firstName, password).catch(err => console.error("Error Email:", err));
+    
+    // 2. WhatsApp (360Messenger)
+    if (phone) {
+      sendWelcomeWhatsApp(phone, firstName, email, password).catch(err => console.error("Error WhatsApp:", err));
+    }
 
     res.json(result.newMember);
 
@@ -68,7 +77,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// 3. EDITAR (PUT) - NUEVO
+// 3. EDITAR (PUT)
 router.put('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   const { 
@@ -81,7 +90,6 @@ router.put('/:id', async (req, res) => {
     if (!currentMember) return res.status(404).json({ error: 'No encontrado' });
 
     await prisma.$transaction(async (tx) => {
-      // Actualizar Miembro
       await tx.member.update({
         where: { id },
         data: {
@@ -90,14 +98,10 @@ router.put('/:id', async (req, res) => {
         }
       });
 
-      // Actualizar Usuario (Email y Nombre)
       if (currentMember.userId && email) {
         await tx.user.update({
           where: { id: currentMember.userId },
-          data: {
-            email: email,
-            name: `${firstName} ${lastName}`
-          }
+          data: { email: email, name: `${firstName} ${lastName}` }
         });
       }
     });
@@ -110,7 +114,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// 4. ELIMINAR (DELETE)
+// 4. ELIMINAR
 router.delete('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);

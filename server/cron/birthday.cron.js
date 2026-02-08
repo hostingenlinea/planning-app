@@ -1,12 +1,13 @@
 const cron = require('node-cron');
 const { PrismaClient } = require('@prisma/client');
 const { sendBirthdayEmail } = require('../config/mailer');
+const { sendBirthdayWhatsApp } = require('../config/whatsapp'); // <--- IMPORTAR
 const prisma = new PrismaClient();
 
 const initBirthdayCron = () => {
-  // Ejecutar todos los días a las 08:00 AM
-  cron.schedule('0 8 * * *', async () => {
-    console.log('⏰ Ejecutando revisión diaria de cumpleaños...');
+  // Ejecutar todos los días a las 09:00 AM (Hora un poco más tarde es mejor)
+  cron.schedule('0 9 * * *', async () => {
+    console.log('⏰ Revisando cumpleaños del día...');
     
     const today = new Date();
     const currentMonth = today.getMonth();
@@ -14,11 +15,8 @@ const initBirthdayCron = () => {
 
     try {
       const members = await prisma.member.findMany({
-        where: {
-          NOT: { birthDate: null },
-          NOT: { email: null }
-        },
-        select: { email: true, firstName: true, birthDate: true }
+        where: { NOT: { birthDate: null } },
+        select: { email: true, firstName: true, birthDate: true, phone: true }
       });
 
       const birthdayBoys = members.filter(m => {
@@ -27,11 +25,11 @@ const initBirthdayCron = () => {
       });
 
       if (birthdayBoys.length > 0) {
-        console.log(`🎉 Hoy cumplen años ${birthdayBoys.length} personas.`);
+        console.log(`🎉 Hoy hay ${birthdayBoys.length} cumpleaños.`);
+        
         for (const member of birthdayBoys) {
-          if (member.email) {
-            await sendBirthdayEmail(member.email, member.firstName);
-          }
+          if (member.email) await sendBirthdayEmail(member.email, member.firstName);
+          if (member.phone) await sendBirthdayWhatsApp(member.phone, member.firstName);
         }
       } else {
         console.log('📅 Hoy no hay cumpleaños.');
