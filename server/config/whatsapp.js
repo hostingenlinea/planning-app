@@ -35,7 +35,7 @@ const sendWhatsAppMessage = async (phone, text) => {
     };
 
     // Petición AXIOS
-    const res = await axios.post(`${WA_API_URL}`, payload, {
+    const res = await axios.post(`${WA_API_URL}/v2/sendMessage`, payload, {
       headers: {
         'token': WA_TOKEN, // Tu docu dice 'token', a veces es 'apikey'
         'Content-Type': 'application/json'
@@ -47,7 +47,7 @@ const sendWhatsAppMessage = async (phone, text) => {
 
   } catch (error) {
     // Mejor manejo de errores para ver qué pasa
-    console.error('❌ Error WhatsApp URL:', `${WA_API_URL}`);
+    console.error('❌ Error WhatsApp URL:', `${WA_API_URL}/v2/sendMessage`);
     console.error('❌ Detalle:', error.response?.data || error.message);
   }
 };
