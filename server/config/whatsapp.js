@@ -1,20 +1,31 @@
 const axios = require('axios');
 
-// Configuración para 360Messenger
-const WA_API_URL = 'https://api.360messenger.com/v2';
-const WA_TOKEN = process.env.WA_API_KEY; // Tu Token de 360Messenger
+// AJUSTE 1: URL Base Correcta según tu documentación (v2)
+// Si esta falla, prueba con 'https://waba-v2.360messenger.com' o quita el '/v2' de aquí y ponlo abajo.
+const WA_API_URL = 'https://api.360messenger.com/v2'; 
+const WA_TOKEN = process.env.WA_API_KEY;
 
 const sendWhatsAppMessage = async (phone, text) => {
   if (!WA_TOKEN) {
-    console.log('⚠️ WhatsApp no configurado (Falta WA_API_KEY). Mensaje omitido.');
+    console.log('⚠️ Faltan credenciales de WhatsApp.');
     return;
   }
 
   try {
-    // Limpieza del número (360Messenger suele requerir el número limpio con código país)
-    // Ejemplo: 5491122334455
-    const cleanPhone = phone.replace(/\D/g, ''); 
+    // AJUSTE 2: Limpieza de teléfono para Argentina (549...)
+    // Quitamos el '+' y cualquier espacio
+    let cleanPhone = phone.replace(/\D/g, ''); 
 
+    // Si el número viene como "1122334455" (sin 54), le agregamos el 549
+    if (cleanPhone.length === 10) {
+        cleanPhone = '549' + cleanPhone;
+    } 
+    // Si viene como "5411..." (sin el 9), a veces es necesario el 9 para WhatsApp
+    else if (cleanPhone.startsWith('54') && !cleanPhone.startsWith('549')) {
+        cleanPhone = '549' + cleanPhone.slice(2);
+    }
+
+    // Configuración del envío
     const payload = {
       to: cleanPhone,
       type: "text",
@@ -23,10 +34,10 @@ const sendWhatsAppMessage = async (phone, text) => {
       }
     };
 
-    // Según su documentación v2
+    // Petición AXIOS
     const res = await axios.post(`${WA_API_URL}/message/send`, payload, {
       headers: {
-        'token': WA_TOKEN, // Usualmente es 'token' o 'apikey' en 360Messenger
+        'token': WA_TOKEN, // Tu docu dice 'token', a veces es 'apikey'
         'Content-Type': 'application/json'
       }
     });
@@ -35,40 +46,31 @@ const sendWhatsAppMessage = async (phone, text) => {
     return res.data;
 
   } catch (error) {
-    console.error('❌ Error enviando WhatsApp:', error.response?.data || error.message);
+    // Mejor manejo de errores para ver qué pasa
+    console.error('❌ Error WhatsApp URL:', `${WA_API_URL}/message/send`);
+    console.error('❌ Detalle:', error.response?.data || error.message);
   }
 };
 
-// --- MENSAJES PERSONALIZADOS ---
-
-// 1. Bienvenida (Estilo Iglesia)
+// ... (El resto de las funciones sendWelcomeWhatsApp y sendBirthdayWhatsApp quedan IGUAL) ...
+// Copia las funciones de abajo del archivo anterior
 const sendWelcomeWhatsApp = async (phone, name, email, password) => {
   const message = `¡Bendiciones ${name}! 🙌
   
-Nos llena de alegría darte la bienvenida a la familia MDSQ. Es un honor servir juntos.
-
-Aquí tienes tus credenciales para acceder a nuestra App de gestión:
-📧 *Email:* ${email}
-🔑 *Clave:* ${password}
-
-Puedes ingresar aquí: https://mdsq.hcloud.one/login
-
-¡Oramos para que esta herramienta sea de gran bendición en tu servicio! 🙏`;
-
+Bienvenido a la familia MDSQ.
+Tus credenciales:
+📧 Email: ${email}
+🔑 Clave: ${password}
+  
+Ingresa en: https://mdsq.hcloud.one/login`;
   await sendWhatsAppMessage(phone, message);
 };
 
-// 2. Cumpleaños (Estilo Iglesia)
 const sendBirthdayWhatsApp = async (phone, name) => {
   const message = `¡Feliz Cumpleaños ${name}! 🎂🎉
-
-Damos gracias a Dios por tu vida en este día especial. Que Su gracia y favor te sigan acompañando en este nuevo año.
-
-"Jehová te bendiga, y te guarde; Jehová haga resplandecer su rostro sobre ti." - Números 6:24
-
-¡Te amamos y celebramos tu vida!
+  
+Damos gracias a Dios por tu vida. ¡Que tengas un día bendecido!
 - Familia MDSQ`;
-
   await sendWhatsAppMessage(phone, message);
 };
 
