@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Plus, Calendar, Clock, ChevronRight, Loader } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { canManageServices } from '../utils/roles';
+import { authHeaders } from '../utils/api';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -14,7 +16,7 @@ const Plans = () => {
   const [creating, setCreating] = useState(false);
 
   // PERMISO DE CREAR: SOLO ADMIN, PASTOR, PRODUCTOR
-  const canCreate = ['Admin', 'Pastor', 'Productor'].includes(user?.role || '');
+  const canCreate = canManageServices(user?.role);
 
   useEffect(() => {
     fetchServices();
@@ -34,10 +36,10 @@ const Plans = () => {
     try {
       const today = new Date();
       const res = await axios.post(`${API_URL}/api/services`, {
-        name: 'Reunión General',
+        name: 'Reunion General',
         date: today.toISOString(),
-        leader: user.name
-      });
+        type: 'Culto'
+      }, authHeaders(user));
       navigate(`/plans/${res.data.id}`);
     } catch (error) {
       console.error(error);
@@ -91,3 +93,5 @@ const Plans = () => {
 };
 
 export default Plans;
+
+

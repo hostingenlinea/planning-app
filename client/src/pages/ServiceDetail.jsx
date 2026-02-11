@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { canManageServices } from '../utils/roles';
+import { authHeaders } from '../utils/api';
 import { 
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors 
 } from '@dnd-kit/core';
@@ -115,7 +117,7 @@ const ServiceDetail = () => {
   const [saving, setSaving] = useState(false);
 
   // Permisos: Admin, Pastor, Productor
-  const canEdit = ['Admin', 'Pastor', 'Productor'].includes(user?.role || '');
+  const canEdit = canManageServices(user?.role);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -193,7 +195,7 @@ const ServiceDetail = () => {
         })) 
       };
       
-      await axios.put(`${API_URL}/api/services/${id}`, payload);
+      await axios.put(`${API_URL}/api/services/${id}`, payload, authHeaders(user));
       alert('Planificación guardada con éxito ✅');
       fetchService(); // Recargamos para obtener los IDs reales de la base de datos
     } catch (error) {

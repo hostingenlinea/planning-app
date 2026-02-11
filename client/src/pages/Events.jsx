@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { canManageServices } from '../utils/roles';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import CreateServiceModal from '../components/CreateServiceModal';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 const Events = () => {
+  const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null); // Para pasar al modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
+  const canCreate = canManageServices(user?.role);
 
   useEffect(() => {
     fetchEvents();
@@ -42,6 +46,8 @@ const Events = () => {
   };
 
   const handleDayClick = (day) => {
+    if (!canCreate) return;
+
     // Crear fecha seleccionada
     const clickedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     setSelectedDate(clickedDate);
@@ -80,9 +86,11 @@ const Events = () => {
           </span>
           
           {/* Botón flotante '+' que aparece al hover */}
-          <button className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-600">
-            <Plus size={16}/>
-          </button>
+          {canCreate && (
+            <button className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-600">
+              <Plus size={16}/>
+            </button>
+          )}
 
           <div className="mt-2 space-y-1">
             {dayEvents.map(ev => (

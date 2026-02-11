@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getRoleKey } from '../utils/roles';
 import confetti from 'canvas-confetti';
 import { 
   Users, Church, Calendar, Settings, Network, Layers, 
@@ -40,14 +41,8 @@ const Layout = ({ children }) => {
     }());
   };
 
-  // --- LÓGICA DE ROLES ---
-  let roleKey = 'COLABORADOR';
-  const role = user?.role || '';
-  
-  if (role === 'Admin' || role === 'Pastor') roleKey = 'ADMIN';
-  else if (role === 'Productor') roleKey = 'PRODUCTOR';
-  else if (role === 'Lider') roleKey = 'LIDER';
-  else if (role === 'Recepción') roleKey = 'RECEPCION';
+  // --- LOGICA DE ROLES ---
+  const roleKey = getRoleKey(user?.role);
 
   const menusByRole = {
     ADMIN: [
@@ -145,3 +140,5 @@ const Layout = ({ children }) => {
   );
 };
 export default Layout;
+
+

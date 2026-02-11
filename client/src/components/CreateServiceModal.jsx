@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { X, Calendar, Clock, Loader, LayoutList } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { authHeaders } from '../utils/api';
 
 // Agregamos la prop "preSelectedDate"
 const CreateServiceModal = ({ isOpen, onClose, onServiceCreated, preSelectedDate }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     date: '', 
@@ -36,7 +39,7 @@ const CreateServiceModal = ({ isOpen, onClose, onServiceCreated, preSelectedDate
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/api/services`, formData);
+      await axios.post(`${API_URL}/api/services`, formData, authHeaders(user));
       onServiceCreated();
       onClose();
       setFormData({ name: '', date: '', type: 'Culto' });
