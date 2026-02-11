@@ -132,23 +132,24 @@ const sendWelcomeWhatsApp = async (phone, name, email, password) => {
   const message = `Hola ${name}, bendiciones!
 
 Nos alegra mucho darte la bienvenida a la familia de la Iglesia MDS Quilmes.
-Oramos para que este nuevo tiempo sea de crecimiento, fe y proposito.
+Oramos para que este nuevo tiempo sea de crecimiento, fe y prop\u00F3sito.
 
 Tus datos de acceso fueron enviados a tu correo.
-Si no los encontr�s, revis� la carpeta de spam o escribinos.
+Si no los encontr\u00E1s, revis\u00E1 la carpeta de spam o escribinos.
 
-Pod�s ingresar desde:
+Pod\u00E9s ingresar desde:
 https://mdsq.hcloud.one/login`;
 
   await sendWhatsAppMessage(phone, message);
 };
 
 const sendBirthdayWhatsApp = async (phone, name) => {
-  const message = `Feliz cumpleanos, ${name}!\n\nHoy damos gracias a Dios por tu vida y por todo lo que El hace en vos.\nOramos para que este nuevo año este lleno de paz, salud, amor y proposito.\n\nTe abrazamos con mucho carino.\n- Familia MDSQ`;
+  const message = `Feliz cumplea\u00F1os, ${name}!\n\nHoy damos gracias a Dios por tu vida y por todo lo que \u00C9l hace en vos.\nOramos para que este nuevo a\u00F1o este lleno de paz, salud, amor y prop\u00F3sito.\n\nTe abrazamos con mucho cari\u00F1o.\n- Familia MDSQ`;
 
   await sendWhatsAppMessage(phone, message);
 };
 
 module.exports = { sendWelcomeWhatsApp, sendBirthdayWhatsApp };
+
 
 
